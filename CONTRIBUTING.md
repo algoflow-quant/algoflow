@@ -2,10 +2,10 @@
 
 ## Initial Steps
 
- * Install python 3.9 or higher (python 3.12 reccomended) from python website or system package manager
- * Check python version: `python3 --version'
+* Install python 3.9 or higher (python 3.12 reccomended) from python website or system package manager
+* Check python version: `python3 --version'
 
- * Call 225-975-5921 if you are unsure or have questions. 
+* Call 225-975-5921 if you are unsure or have questions. 
 
 ### 1. Clone repo
 ```bash
@@ -25,7 +25,7 @@ python3 -m venv venv
 source venv/bin/activate # On windows this is: venv\Scripts\activate   
 pip install -r requirements.txt
 ```
- * Windows users should use WSL for development
+* Windows users should use WSL for development
 
 ### 3. Setup commit tools
 
@@ -44,8 +44,8 @@ cz commit # Provides interactive helper for formatting
 #### Install pre-commit hooks (Optional but reccommended, catch commit errors before pushing to online repo):
 
 **IMPORTANT**
- * You will have to redo commit messages if they are in the wrong format!!!
- * Note that github actions will prevent you from committing improper messages to the repo. 
+* You will have to redo commit messages if they are in the wrong format!!!
+* Note that github actions will prevent you from committing improper messages to the repo. 
 
 ```bash
 # Install pre-commit
@@ -77,22 +77,22 @@ Can also have a body and footer
 - **revert**: Reverts a previous commit
 
 ### Scope (Optional)
-  The scope should indicate what part of the codebase changed:
-  - `backend`, `frontend`, `api`, `db`, `auth`, `ui`, etc.
+The scope should indicate what part of the codebase changed:
+- `backend`, `frontend`, `api`, `db`, `auth`, `ui`, etc.
 
 ### Description Rules
-  - Use imperative mood ("add" not "added" or "adds")
-  - Don't capitalize first letter
-  - No period at the end
-  - Keep under 72 characters
+- Use imperative mood ("add" not "added" or "adds")
+- Don't capitalize first letter
+- No period at the end
+- Keep under 72 characters
 
 ### Examples
 
 **Good commits:**
 ```
-  feat(auth): add OAuth2 login with Google
-  fix(api): resolve timeout on stock api
-  docs: update stock database installation instructions in README
+feat(auth): add OAuth2 login with Google
+fix(api): resolve timeout on stock api
+docs: update stock database installation instructions in README
 ```
 
 ### Other stuff
@@ -103,11 +103,121 @@ For breaking changes, add ! after type/scope and explain in body:
 
 For complex changes, add a body:
 ```bash
-  git commit -m "feat(backtest): integrate backtesting queue" -m "
-  - Addded priority queue for backtest nodes
-  - Created installation scripts to deploy multiple backtest nodes
-  - Added a load balancer to route backtests
-  - Update database schema"
+git commit -m "feat(backtest): integrate backtesting queue" -m "
+- Addded priority queue for backtest nodes
+- Created installation scripts to deploy multiple backtest nodes
+- Added a load balancer to route backtests
+- Update database schema"
 ```
 
 ## Branch workflow
+
+### Protected Branches
+- **main**: Production-ready code (protected, requires PR + review)
+- **dev**: Integration branch for features (protected, requires PR + review)
+- **Never push directly to main or dev!**
+
+### Branch Naming Convention
+
+Use descriptive branch names with these prefixes:
+
+- `feature/` - New features or enhancements
+- `bugfix/` - Bug fixes (non-urgent)
+- `hotfix/` - Urgent production fixes
+- `docs/` - Documentation only changes
+- `refactor/` - Code refactoring (no functionality change)
+- `test/` - Adding or updating tests
+- `chore/` - Maintenance tasks
+
+**Examples:**
+- feature/user-authentication
+- feature/portfolio-analytics
+- bugfix/chart-rendering-error
+
+### Creating a Branch
+
+**Always start from dev:**
+```bash
+git checkout dev
+git pull origin dev
+git checkout -b feature/your-feature-name
+```
+
+### Working on your branch
+
+**After Changes**
+```bash
+git add .
+git commit -m "feat: add new feature" 
+
+# Keep branch updated with dev
+git fetch origin
+git rebase origin/dev  # or merge if you prefer
+
+git push origin feature/your-feature-name
+```
+
+## Pull Request Process
+
+### 1. Push branch to GitHub
+```bash
+git push origin feature/your-feature # Make sure you branch off of dev
+```
+
+### 2. Create Pull request
+
+On GitHub:
+- Click "Compare & pull request" button
+- Base: dev (NEVER directly to main)
+- Compare: your feature branch
+
+PR Title:
+- Use clear, descriptive title
+- Example: "Add portfolio analytics dashboard"
+
+PR Description Template:
+## What
+Brief description of changes
+
+## Why
+Problem this solves or feature it adds
+
+## How
+Technical approach taken
+
+## Testing
+How you tested the changes
+
+## Screenshots (if UI changes)
+[Add screenshots here]
+
+## Checklist
+- [ ] Tests pass locally
+- [ ] Documentation updated
+- [ ] No console errors
+- [ ] Followed code style
+
+### 3. PR requirements 
+
+Before your PR can be merged:
+-  All commits follow conventional format (enforced by CI)
+-  All GitHub Actions checks pass
+-  Code review approved by @cadenlund
+-  All review comments resolved
+-  Branch is up to date with dev
+-  PR is focused (one feature/fix only)
+
+### 4. After Approval
+
+- Only @cadenlund merges PRs
+- GitHub will prompt to delete branch - click "Delete branch"
+- Pull latest dev locally: git pull origin dev
+
+### 5. PR Labels
+
+Add relevant labels:
+- feature - New functionality
+- bug - Bug fixes
+- documentation - Docs only
+- refactor - Code improvement
+- urgent - Needs quick review
