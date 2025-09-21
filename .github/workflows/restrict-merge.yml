@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
+permissions:
+  statuses: write
+  pull-requests: read
+
 jobs:
   enforce-merge-restriction:
     runs-on: ubuntu-latest
