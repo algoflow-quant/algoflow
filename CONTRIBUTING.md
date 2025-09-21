@@ -31,8 +31,10 @@ pip install -r requirements.txt
 
 #### Install commitizen for easy guided commits:
 ```bash
+# Exit virtual environment
+deactivate
 # Install pipx for global python packages
-pip install --user pipx # Or pip3 install
+sudo apt install pipx # brew install pipx
 # Install commitizen for guided commits
 pipx install commitizen
 pipx ensurepath
