@@ -1,7 +1,7 @@
 name: Lint Commits
 on: [pull_request]
 
-# Permission so that github action can checkout
+# Permission so that github action can checkout(read repo)
 permissions:
     contents: read
     pull-requests: read
