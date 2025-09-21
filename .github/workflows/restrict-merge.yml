@@ -1,0 +1,27 @@
+name: Merge Restriction
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  enforce-merge-restriction:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add merge restriction status
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prAuthor = context.payload.pull_request.user.login;
+
+            // Only cadenlund can merge
+            const isAuthorized = (prAuthor === 'cadenlund');
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.payload.pull_request.head.sha,
+              state: isAuthorized ? 'success' : 'pending',
+              context: 'merge-permission',
+              description: isAuthorized ? 'Authorized to merge' : 'Only @cadenlund can merge PRs'
+            });
