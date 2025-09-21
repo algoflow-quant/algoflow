@@ -1,0 +1,10 @@
+# Virtual Environment
+backend/venv/
+venv/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+.pytest_cache/
