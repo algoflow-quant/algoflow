@@ -1,0 +1,9 @@
+[tool.commitizen]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+version_scheme = "semver"
+version = "1.0.0"
+version_files = [
+    "version.json"
+]
+update_changelog_on_bump = true
