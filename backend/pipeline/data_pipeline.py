@@ -89,8 +89,12 @@ class DataPipeline:
         # Read the nasdaq url file with | as the separator
         df = pd.read_csv(nasdaq_url, sep='|')
         
+        # Remove nan values from the data
+        df = df.dropna(subset=['Symbol']) 
+        
         # Extract the Symbol column to a list & remove test symbol
         tickers = df[df['Test Issue'] == 'N']['Symbol'].tolist()
+        
         
         # Return ticker list
         return tickers
