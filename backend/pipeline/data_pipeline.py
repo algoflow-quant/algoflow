@@ -98,7 +98,3 @@ class DataPipeline:
         
         # Return ticker list
         return tickers
-    
-    
-if __name__ == "__main__":
-    pipeline = DataPipeline()
