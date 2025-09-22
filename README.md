@@ -2,7 +2,7 @@
 
 ![Version](https://img.shields.io/github/v/tag/algoflow-quant/algoflow)
 ![Build](https://github.com/algoflow-quant/algoflow/actions/workflows/commitlint.yml/badge.svg)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![License](https://img.shields.io/badge/license-Proprietary-red)
 ![Python](https://img.shields.io/badge/python-3.9+-blue)
 ![Contributors](https://img.shields.io/github/contributors/algoflow-quant/algoflow)
 
