@@ -2,6 +2,8 @@ from typing import List, Dict, Optional
 from datetime import datetime, date
 import pandas as pd
 import yfinance as yf
+import os
+import json
 
 
 class DataPipeline:
@@ -10,21 +12,38 @@ class DataPipeline:
     """
 
     def __init__(self):
-        pass
+        # Load/download tickers
+        self.tickers = self.load_tickers()
     
-    
-    def scrape_tickers(self) -> None:
-        nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
+    def save_tickers(self, tickers: List[str], filename: str = "tickers.json") -> None:
+        """Save tickers to JSON with extra data"""
+        data = {
+            "source": "nasdaq",
+            "updated": datetime.now().isoformat(),
+            "count": len(tickers),
+            "tickers": tickers
+        }
+        filepath = os.path.join(os.path.dirname(__file__), filename)
+        with open(filepath, 'w') as f:
+            json.dump(data, f, indent=2)
+
+        print(f"Saved {len(tickers)} tickers to {filename}")
         
-        # Read the nasdaq url file with | as the separator
-        df = pd.read_csv(nasdaq_url, sep='|')
-        
-        # Extract the Symbol column to a list
-        tickers = df['Symbol'].tolist()
-        
-        # Return ticker list
-        return tickers
-        
+    def load_tickers(self, filename: str = "tickers.json") -> List[str]:
+        """Load tickers from JSON file"""
+        filepath = os.path.join(os.path.dirname(__file__), filename)
+
+        if not os.path.exists(filepath):
+            print("No saved tickers found, fetching fresh...")
+            tickers = self._scrape_tickers()
+            self.save_tickers(tickers, filename)
+            return tickers
+
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+
+        print(f"Loaded {data['count']} tickers from {data['updated']}")
+        return data['tickers']
 
     def scrape_date_range(
         self,
@@ -64,7 +83,18 @@ class DataPipeline:
         """
         pass
     
+    def _scrape_tickers(self) -> List[str]:
+        nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
+        
+        # Read the nasdaq url file with | as the separator
+        df = pd.read_csv(nasdaq_url, sep='|')
+        
+        # Extract the Symbol column to a list & remove test symbol
+        tickers = df[df['Test Issue'] == 'N']['Symbol'].tolist()
+        
+        # Return ticker list
+        return tickers
+    
     
 if __name__ == "__main__":
     pipeline = DataPipeline()
-    pipeline.scrape_tickers()
