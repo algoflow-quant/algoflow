@@ -11,7 +11,6 @@
 ![Issues](https://img.shields.io/github/issues/algoflow-quant/AlgoFlow)
 ![Pull Requests](https://img.shields.io/github/issues-pr/algoflow-quant/AlgoFlow)
 ![Closed Issues](https://img.shields.io/github/issues-closed/algoflow-quant/AlgoFlow)
-![Contributors](https://img.shields.io/github/contributors/algoflow-quant/AlgoFlow)
 
 ## Overview
 
