@@ -6,7 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.9+-blue)
 ![Contributors](https://img.shields.io/github/contributors/algoflow-quant/algoflow)
 
-## 📊 Project Status
+## Project Status
 
 ![Issues](https://img.shields.io/github/issues/algoflow-quant/AlgoFlow)
 ![Pull Requests](https://img.shields.io/github/issues-pr/algoflow-quant/AlgoFlow)
