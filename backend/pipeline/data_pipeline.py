@@ -17,6 +17,7 @@ class DataPipeline:
         self.tickers = self._load_tickers()
 
     def scrape_metadata(self, tickers: List[str]) -> Dict[str, Dict[str, Any]]:
+
         """
         Scrape fundamental metadata for tickers
 
@@ -292,9 +293,5 @@ class DataPipeline:
 
         print(f"Loaded {data['count']} tickers from {data['updated']}")
         return data['tickers']
-            
 
-if __name__ == "__main__":
-    pipeline = DataPipeline()
-    data = pipeline.scrape_metadata(pipeline.tickers)
     
