@@ -11,7 +11,7 @@ CREATE TABLE security_master.securities (
     bar_count INTEGER, --number of data points available
     groupings TEXT[], --list of groupings (dow, market cap, sector, industry, etc)
     created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(ticker, provider)
+    UNIQUE(security_id, provider)
 );
 
 -- Create OHLCV table for daily data
@@ -43,13 +43,12 @@ ALTER TABLE ohlcv_data SET (
 -- Add compression policy (compresses chunks older than 30 days)
 SELECT add_compression_policy('ohlcv_data', INTERVAL '30 days');
 
-
 CREATE TABLE yfinance.stock_metadata (
     -- Primary Keys & Identifiers
     security_id INTEGER REFERENCES security_master.securities(security_id),
     date_scraped DATE NOT NULL,
     PRIMARY KEY (security_id, date_scraped),
-
+  
     -- Company Basic Info (80%+ availability)
     company_name VARCHAR(255),
     exchange VARCHAR(50),
