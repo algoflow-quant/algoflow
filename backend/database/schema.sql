@@ -1,16 +1,29 @@
 -- Enable TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
+-- Create schema for security master data
+CREATE TABLE security_master.securities (
+    security_id SERIAL PRIMARY KEY, -- Unique identifier for each ticker per provider
+    ticker VARCHAR(20) NOT NULL, 
+    provider VARCHAR(50) NOT NULL,
+    start_data DATE,
+    end_data DATE, 
+    bar_count INTEGER, --number of data points available
+    groupings TEXT[], --list of groupings (dow, market cap, sector, industry, etc)
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(security_id, provider)
+);
+
 -- Create OHLCV table for daily data
-CREATE TABLE ohlcv_data (
-    ticker VARCHAR(20) NOT NULL,
+CREATE TABLE yfinance.ohlcv_data (
+    security_id INTEGER REFERENCES security_master.securities(security_id),
     date DATE NOT NULL,
     open DECIMAL(20, 8) NOT NULL,
     high DECIMAL(20, 8) NOT NULL,
     low DECIMAL(20, 8) NOT NULL,
     close DECIMAL(20, 8) NOT NULL,
-    volume DECIMAL(20, 8) NOT NULL,
-    PRIMARY KEY (ticker, date)
+    volume BIGINT NOT NULL,
+    PRIMARY KEY (security_id, date)
 );
 
 -- Convert to TimescaleDB hypertable with partitioning
@@ -30,12 +43,12 @@ ALTER TABLE ohlcv_data SET (
 -- Add compression policy (compresses chunks older than 30 days)
 SELECT add_compression_policy('ohlcv_data', INTERVAL '30 days');
 
-CREATE TABLE stock_metadata (
+CREATE TABLE yfinance.stock_metadata (
     -- Primary Keys & Identifiers
-    ticker VARCHAR(20) NOT NULL,
+    security_id INTEGER REFERENCES security_master.securities(security_id),
     date_scraped DATE NOT NULL,
-    PRIMARY KEY (ticker, date_scraped),
-
+    PRIMARY KEY (security_id, date_scraped),
+  
     -- Company Basic Info (80%+ availability)
     company_name VARCHAR(255),
     exchange VARCHAR(50),
@@ -115,13 +128,7 @@ CREATE TABLE stock_metadata (
     data_source VARCHAR(50) DEFAULT 'yfinance'
 );
 
--- Essential indexes for queries
-CREATE INDEX idx_ticker ON stock_metadata(ticker);
-CREATE INDEX idx_date_scraped ON stock_metadata(date_scraped);
-CREATE INDEX idx_sector_industry ON stock_metadata(sector, industry);
-CREATE INDEX idx_market_cap ON stock_metadata(market_cap DESC);
-CREATE INDEX idx_volume ON stock_metadata(average_volume DESC);
-CREATE INDEX idx_short_interest ON stock_metadata(short_percent_of_float DESC);
-CREATE INDEX idx_profitability ON stock_metadata(return_on_equity DESC, profit_margin
-DESC);
-CREATE INDEX idx_valuation ON stock_metadata(forward_pe, price_to_book);
+-- Indexes for performance optimization
+CREATE INDEX idx_sec_ticker ON security_master.securities(ticker);
+CREATE INDEX idx_ohlcv_security_date ON yfinance.ohlcv_data(security_id, date);
+CREATE INDEX idx_metadata_security_date ON yfinance.metadata(security_id);
