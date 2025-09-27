@@ -1,20 +1,21 @@
-from typing import List, Dict, Optional, Any
-from datetime import datetime, date
+from typing import List, Dict, Any
+from datetime import datetime, date, timedelta
 import pandas as pd
 import yfinance as yf
-import os
-import json
 import logging
 from tqdm import tqdm
+import requests
 
-class DataPipeline:
+class YfinancePipeline:
     """
     Main data pipeline with date range and incremental scraping
     """
     
     def __init__(self):
-        # Load/download tickers
-        self.tickers = self._load_tickers()
+        # Set logger
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(logging.DEBUG)
+        
 
     def scrape_metadata(self, tickers: List[str]) -> Dict[str, Dict[str, Any]]:
 
@@ -27,6 +28,7 @@ class DataPipeline:
         Returns:
             Dictionary mapping ticker to metadata dict
         """
+        self.logger.info(f"Starting metadata scrape for {len(tickers)} tickers")
 
         metadata_dict = {}
         failed_tickers = []
@@ -40,11 +42,13 @@ class DataPipeline:
 
         for ticker in tqdm(tickers[0:400], desc="Scraping metadata"):
             try:
+                self.logger.debug(f"Fetching metadata for {ticker}")
                 stock = yf.Ticker(ticker)
                 info = stock.info
 
                 # Skip if no data returned
                 if not info or 'symbol' not in info:
+                    self.logger.debug(f"No data returned for {ticker}")
                     failed_tickers.append(ticker)
                     continue
 
@@ -153,10 +157,11 @@ class DataPipeline:
                         field_counts[key] = field_counts.get(key, 0) + (1 if value is not None else 0)
 
             except Exception as e:
-                print(f"Error scraping {ticker}: {e}")
+                self.logger.error(f"Error scraping metadata for {ticker}: {e}")
                 failed_tickers.append(ticker)
                 continue
 
+        self.logger.info(f"Metadata scrape complete: {len(metadata_dict)} successful, {len(failed_tickers)} failed")
         return metadata_dict
     
     def scrape_date_range(
@@ -181,7 +186,7 @@ class DataPipeline:
         data_dict = {}
         failed_tickers = []
         total = len(tickers)
-        print(f"Starting to scrape {total} tickers from {start_date} to {end_date}")
+        self.logger.info(f"Starting date range scrape: {total} tickers from {start_date} to {end_date}")
         
         # Configure logger to supress yfinance output
         yf_logger = logging.getLogger('yfinance')
@@ -189,6 +194,7 @@ class DataPipeline:
         
         for i, ticker in tqdm(enumerate(tickers, 1), desc="Scraping tickers"):
             try:
+                self.logger.debug(f"Downloading data for {ticker}")
                 # Download the data for a ticker
                 ticker_data = yf.download(
                     ticker,
@@ -198,33 +204,96 @@ class DataPipeline:
                     progress=False, # Disable individual progress bars
                     auto_adjust=True, # adjusted close prices (dividends & stock splits)
                 )
-                
+
                 # Check if data
                 if ticker_data is not None and not ticker_data.empty:
+                    self.logger.debug(f"Successfully downloaded {len(ticker_data)} rows for {ticker}")
                     data_dict[ticker] = ticker_data
                     if i % 100 == 0:
-                        print(f"\nProgress: {i}/{total} tickers scraped\nFailed tickers: {len(failed_tickers)}")
+                        self.logger.info(f"Progress: {i}/{total} tickers scraped, {len(failed_tickers)} failed")
                 else:
+                    self.logger.debug(f"No data returned for {ticker}")
                     failed_tickers.append(ticker)
             
             except Exception as e:
-                print(f"Error scraping {ticker}: {e}")
+                self.logger.error(f"Error downloading data for {ticker}: {e}")
                 failed_tickers.append(ticker)
                 continue
-        
-        print(f"\nScraping complete!")
-        print(f"Successfully scraped: {len(data_dict)} tickers")
-        if failed_tickers:
-            print(f"Failed to scrape: {len(failed_tickers)} tickers")
-            if len(failed_tickers) <= 10:
-                print(f"Failed tickers: {failed_tickers}")
+
+        self.logger.info(f"Date range scrape complete: {len(data_dict)} successful, {len(failed_tickers)} failed")
+        if failed_tickers and len(failed_tickers) <= 10:
+            self.logger.info(f"Failed tickers: {failed_tickers}")
 
         return (data_dict, failed_tickers)
     
-    def _scrape_tickers(self) -> List[str]:
+    def _scrape_sp500_tickers(self) -> List[str]:
+        """Scrapes S&P 500 tickers from Wikipedia"""
+        self.logger.info("Scraping S&P 500 tickers from Wikipedia")
+        sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+
+        # Add headers to avoid 403 error
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+
+        # Fetch the HTML with headers
+        self.logger.debug(f"Fetching S&P 500 list from {sp500_url}")
+        response = requests.get(sp500_url, headers=headers)
+        self.logger.debug(f"Response status: {response.status_code}")
+
+        # Read the table from the HTML
+        tables = pd.read_html(response.text)
+        df = tables[0]
+
+        # Extract tickers from Symbol column
+        tickers = df['Symbol'].tolist()
+
+        # Clean tickers (replace dots with dashes for BRK.B -> BRK-B)
+        tickers = [ticker.replace('.', '-') for ticker in tickers]
+        self.logger.info(f"Successfully scraped {len(tickers)} S&P 500 tickers")
+        return tickers
+    
+    def _scrape_russell2000_tickers(self) -> List[str]:
+        """Scrapes Russell 2000 tickers from stockanalysis.com"""
+        self.logger.info("Scraping Russell 2000 tickers from stockanalysis.com")
+        russell_url = "https://stockanalysis.com/list/russell-2000/"
+
+        # Add headers to avoid 403 error
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+
+        # Fetch the HTML with headers
+        self.logger.debug(f"Fetching Russell 2000 list from {russell_url}")
+        response = requests.get(russell_url, headers=headers)
+        self.logger.debug(f"Response status: {response.status_code}")
+
+        # Read the table from the HTML
+        tables = pd.read_html(response.text)
+        df = tables[0]
+
+        # Extract tickers from Symbol column (or first column if Symbol doesn't exist)
+        if 'Symbol' in df.columns:
+            tickers = df['Symbol'].tolist()
+        elif 'Ticker' in df.columns:
+            tickers = df['Ticker'].tolist()
+        else:
+            # Use first column as fallback
+            tickers = df.iloc[:, 0].tolist()
+
+        # Clean tickers - remove any non-string entries
+        tickers = [str(ticker).strip() for ticker in tickers if ticker and str(ticker).strip()]
+
+        self.logger.info(f"Successfully scraped {len(tickers)} Russell 2000 tickers")
+        # Return ticker list
+        return tickers
+    
+    def _scrape_nasdaq_tickers(self) -> List[str]:
         """Scrapes tickers from nasdaq"""
+        self.logger.info("Scraping NASDAQ tickers from nasdaqtrader.com")
         nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
-        
+
+        self.logger.debug(f"Fetching NASDAQ list from {nasdaq_url}")
         # Read the nasdaq url file with | as the separator
         df = pd.read_csv(nasdaq_url, sep='|')
         
@@ -233,65 +302,67 @@ class DataPipeline:
         
         # Extract the Symbol column to a list & remove test symbol
         tickers = df[df['Test Issue'] == 'N']['Symbol'].tolist()
-        
-        
+
+        self.logger.info(f"Successfully scraped {len(tickers)} NASDAQ tickers")
         # Return ticker list
         return tickers
     
-    def _save_tickers(self, tickers: List[str], filename: str = "tickers.json") -> None:
-        """Save tickers to JSON with extra data"""
-        data = {
-            "source": "nasdaq",
-            "updated": datetime.now().isoformat(),
-            "count": len(tickers),
-            "tickers": tickers
+    def validate_tickers(self, tickers: List[str], test_days: int = 7) -> Dict[str, Any]:
+        """
+        Validate tickers by attempting to download recent data
+
+        Args:
+            tickers: List of tickers to validate
+            test_days: Number of days of data to test (default 7)
+
+        Returns:
+            Dict with 'valid' and 'invalid' ticker lists
+        """
+        valid_tickers = []
+        invalid_tickers = []
+        
+        # Configure logger to supress yfinance output
+        yf_logger = logging.getLogger('yfinance')
+        yf_logger.disabled = True
+
+        # Calculate date range
+        end_date = date.today()
+        start_date = end_date - timedelta(days=test_days)
+
+        self.logger.info(f"Starting validation of {len(tickers)} tickers (one at a time)")
+
+        # Process one ticker at a time with clean progress bar
+        for ticker in tqdm(tickers, desc="Validating tickers", ncols=100, leave=True):
+            try:
+                self.logger.debug(f"Validating ticker: {ticker}")
+
+                # Download single ticker with explicit auto_adjust
+                data = yf.download(
+                    tickers=ticker,
+                    start=start_date,
+                    end=end_date,
+                    progress=False,
+                    threads=False,
+                    auto_adjust=True  # Explicitly set to avoid warning
+                )
+
+                # Check if we got valid data
+                if data is not None and not data.empty and len(data) > 0:
+                    self.logger.debug(f"Valid ticker: {ticker}")
+                    valid_tickers.append(ticker)
+                else:
+                    self.logger.debug(f"Invalid ticker (no data): {ticker}")
+                    invalid_tickers.append(ticker)
+
+            except Exception as e:
+                self.logger.debug(f"Error validating {ticker}: {e}")
+                invalid_tickers.append(ticker)
+
+        self.logger.info(f"Validation complete: {len(valid_tickers)} valid, {len(invalid_tickers)} invalid")
+
+        return {
+            'valid': valid_tickers,
+            'invalid': invalid_tickers,
+            'total': len(tickers),
+            'success_rate': len(valid_tickers) / len(tickers) if tickers else 0
         }
-        filepath = os.path.join(os.path.dirname(__file__), filename)
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=2)
-
-        print(f"Saved {len(tickers)} tickers to {filename}")
-        
-    def _remove_tickers(self, tickers_to_remove: List[str], filename: str = "tickers.json") -> None:
-        """Remove failed tickers from the saved ticker list"""
-        filepath = os.path.join(os.path.dirname(__file__), filename)
-        
-        # Load current tickers
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-
-        # Remove the failed tickers
-        original_count = len(data['tickers'])
-        data['tickers'] = [t for t in data['tickers'] if t not in tickers_to_remove]
-        removed_count = original_count - len(data['tickers'])
-
-        # Update metadata
-        data['updated'] = datetime.now().isoformat()
-        data['count'] = len(data['tickers'])
-        data['last_cleanup'] = datetime.now().isoformat()
-        data['removed_count'] = removed_count
-
-        # Save updated list
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=2)
-
-        print(f"Removed {removed_count} tickers from {filename}")
-        print(f"Remaining tickers: {data['count']}")
-    
-    def _load_tickers(self, filename: str = "tickers.json") -> List[str]:
-        """Load tickers from JSON file"""
-        filepath = os.path.join(os.path.dirname(__file__), filename)
-
-        if not os.path.exists(filepath):
-            print("No saved tickers found, fetching fresh...")
-            tickers = self._scrape_tickers()
-            self._save_tickers(tickers, filename)
-            return tickers
-
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-
-        print(f"Loaded {data['count']} tickers from {data['updated']}")
-        return data['tickers']
-
-    
