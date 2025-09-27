@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 import logging
 from typing import Optional, List, Dict
 import pandas as pd
+from datetime import date
 
 class YfinanceClient:
     def __init__(self, db_url: Optional[str] = None):
@@ -92,12 +93,67 @@ class YfinanceClient:
         finally:
             session.close()
       
-    def update_security_metadata(self, ticker: str, metadata: Dict):
+    def update_security_metadata(self, ticker: str, start_date: Optional[date] = None, end_date: Optional[date] = None, bar_count: Optional[int] = None):
         """
-        update security table with extra data
-        uses UPSERT normally and INSERT on conflict
+        Update security_master.securities with data availability info
+        Updates: start_data, end_data, bar_count after OHLCV insertion
         """
-        pass
+        session = self.Session()
+
+        try:
+            # Get security_id
+            security_id = self.get_security_id(ticker)
+
+            if not security_id:
+                self.logger.error(f"Security {ticker} not found")
+                return None
+
+            # If dates not provided, calculate from OHLCV table
+            if not start_date or not end_date or bar_count is None:
+                # Query to get min date, max date, and count from OHLCV
+                stats_query = text("""
+                    SELECT
+                        MIN(date) as start_date,
+                        MAX(date) as end_date,
+                        COUNT(*) as bar_count
+                    FROM yfinance.ohlcv_data
+                    WHERE security_id = :security_id
+                """)
+
+                result = session.execute(stats_query, {'security_id': security_id})
+                row = result.fetchone()
+
+                if row:
+                    start_date = start_date or row[0]
+                    end_date = end_date or row[1]
+                    bar_count = bar_count if bar_count is not None else row[2]
+
+            # Update the securities table
+            update_query = text("""
+                UPDATE security_master.securities
+                SET
+                    start_data = :start_date,
+                    end_data = :end_date,
+                    bar_count = :bar_count
+                WHERE security_id = :security_id
+            """)
+
+            session.execute(update_query, {
+                'security_id': security_id,
+                'start_date': start_date,
+                'end_date': end_date,
+                'bar_count': bar_count
+            })
+
+            session.commit()
+            self.logger.info(f"Updated security metadata for {ticker}: {start_date} to {end_date} ({bar_count} bars)")
+
+        except Exception as e:
+            session.rollback()
+            self.logger.error(f"Error updating security metadata for {ticker}: {e}")
+            raise
+        finally:
+            session.close()
     
     # Yfinance Schema storage
     def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> None:
