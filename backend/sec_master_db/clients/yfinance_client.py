@@ -22,12 +22,41 @@ class YfinanceClient:
         self.logger = logging.getLogger(self.__class__.__name__)
         
         
-    # Ticker management methods    
-    def insert_tickers(self, tickers: List[str], groupings: List[str]):
+    # Security management methods    
+    def insert_securities(self, tickers: List[str], groupings: List[str], provider: str = 'yfinance'):
         """
         Insert tickers into securities table with groupings, ticker, and date_created
         """
-        pass
+        
+        session = self.Session()
+        
+        try:
+            # Use PostgreSQL's UNNEST to insert multiple rows
+            query = text("""
+                INSERT INTO security_master.securities (ticker, provider, groupings, created_at)
+                SELECT 
+                    ticker,
+                    :provider as provider,
+                    :groupings as groupings,  -- This will be the array
+                    NOW() as created_at
+                FROM UNNEST(:tickers ::text[]) as ticker
+                ON CONFLICT (ticker, provider) 
+                DO NOTHING
+            """)
+            
+            # Execute query
+            session.execute(query, {'provider': provider, 'groupings': groupings, 'tickers': tickers})
+            
+            # Commit saves DB changes
+            session.commit() 
+            self.logger.info(f"Successfully inserted {len(tickers)} tickers")
+            
+        except Exception as e:
+            session.rollback()  # Important: rollback on error so we dont commit partial data
+            self.logger.error(f"Error inserting tickers: {e}")
+            raise  # Re-raise so caller knows it failed
+        finally:
+            session.close()
     
     def get_tickers(self, groupings: Optional[str] = None): # -> List[str]:
         """
@@ -62,7 +91,6 @@ class YfinanceClient:
         finally:
             session.close()
       
-    # Metadata insertion methods
     def update_security_metadata(self, ticker: str, metadata: Dict):
         """
         update security table with extra data
@@ -70,7 +98,7 @@ class YfinanceClient:
         """
         pass
     
-    # Data storage
+    # Yfinance Schema storage
     def insert_ohlcv(self, ticker: str, data: pd.DataFrame):
         """
         Insert OHLCV data for a single ticker
