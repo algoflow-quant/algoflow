@@ -170,7 +170,7 @@ class YfinancePipeline:
         start_date: date,
         end_date: date,
         interval: str = '1d'
-    ) -> tuple[Dict[str, pd.DataFrame], List[str]]:
+    ) -> Dict[str, pd.DataFrame]:
         """
         Scrape historical data for a specific date range.
 
@@ -181,7 +181,7 @@ class YfinancePipeline:
             interval: Data interval (1d only)
 
         Returns:
-            Dictionary mapping tickers to data
+            Dictionary mapping tickers to their OHLCV DataFrames (empty dict entry for failed tickers)
         """
         data_dict = {}
         failed_tickers = []
@@ -207,6 +207,10 @@ class YfinancePipeline:
 
                 # Check if data
                 if ticker_data is not None and not ticker_data.empty:
+                    # Flatten column names if they are MultiIndex (happens with single ticker)
+                    if isinstance(ticker_data.columns, pd.MultiIndex):
+                        ticker_data.columns = ticker_data.columns.droplevel(1)
+
                     self.logger.debug(f"Successfully downloaded {len(ticker_data)} rows for {ticker}")
                     data_dict[ticker] = ticker_data
                     if i % 100 == 0:
@@ -224,7 +228,7 @@ class YfinancePipeline:
         if failed_tickers and len(failed_tickers) <= 10:
             self.logger.info(f"Failed tickers: {failed_tickers}")
 
-        return (data_dict, failed_tickers)
+        return data_dict
     
     def _scrape_sp500_tickers(self) -> List[str]:
         """Scrapes S&P 500 tickers from Wikipedia"""

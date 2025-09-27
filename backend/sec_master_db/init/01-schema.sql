@@ -1,17 +1,21 @@
 -- Enable TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
+-- Create schemas
+CREATE SCHEMA IF NOT EXISTS security_master;
+CREATE SCHEMA IF NOT EXISTS yfinance;
+
 -- Create schema for security master data
 CREATE TABLE security_master.securities (
     security_id SERIAL PRIMARY KEY, -- Unique identifier for each ticker per provider
-    ticker VARCHAR(20) NOT NULL, 
+    ticker VARCHAR(20) NOT NULL,
     provider VARCHAR(50) NOT NULL,
     start_data DATE,
-    end_data DATE, 
+    end_data DATE,
     bar_count INTEGER, --number of data points available
     groupings TEXT[], --list of groupings (dow, market cap, sector, industry, etc)
     created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(security_id, provider)
+    UNIQUE(ticker, provider)
 );
 
 -- Create OHLCV table for daily data
@@ -27,21 +31,21 @@ CREATE TABLE yfinance.ohlcv_data (
 );
 
 -- Convert to TimescaleDB hypertable with partitioning
-SELECT create_hypertable('ohlcv_data', 'date',
-    partitioning_column => 'ticker',
+SELECT create_hypertable('yfinance.ohlcv_data', 'date',
+    partitioning_column => 'security_id',
     number_partitions => 4,
     if_not_exists => TRUE
 );
 
 -- Enable compression for data older than 30 days
-ALTER TABLE ohlcv_data SET (
+ALTER TABLE yfinance.ohlcv_data SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'ticker',
+    timescaledb.compress_segmentby = 'security_id',
     timescaledb.compress_orderby = 'date DESC'
 );
 
 -- Add compression policy (compresses chunks older than 30 days)
-SELECT add_compression_policy('ohlcv_data', INTERVAL '30 days');
+SELECT add_compression_policy('yfinance.ohlcv_data', INTERVAL '30 days');
 
 CREATE TABLE yfinance.stock_metadata (
     -- Primary Keys & Identifiers
@@ -131,4 +135,4 @@ CREATE TABLE yfinance.stock_metadata (
 -- Indexes for performance optimization
 CREATE INDEX idx_sec_ticker ON security_master.securities(ticker);
 CREATE INDEX idx_ohlcv_security_date ON yfinance.ohlcv_data(security_id, date);
-CREATE INDEX idx_metadata_security_date ON yfinance.metadata(security_id);
+CREATE INDEX idx_metadata_security_date ON yfinance.stock_metadata(security_id);
