@@ -8,3 +8,7 @@ __pycache__/
 *.py[cod]
 *.pyc
 .pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*

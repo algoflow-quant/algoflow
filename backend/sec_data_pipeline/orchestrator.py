@@ -1,4 +1,4 @@
-from data_pipeline import DataPipeline
+from sec_data_pipeline.yfinance.yfinance_pipeline import DataPipeline
 
 class PipelineOrchestrator():
     

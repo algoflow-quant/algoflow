@@ -56,15 +56,6 @@ echo "Creating database user and database..."
 sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';" || true
 sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;" || true
 
-echo "Enabling TimescaleDB extension..."
-sudo -u postgres psql -d $DB_NAME -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
-
-echo "Running schema.sql..."
-sudo -u postgres psql -d $DB_NAME -f "$SCHEMA_FILE"
-
-echo "Creating hypertable..."
-sudo -u postgres psql -d $DB_NAME -c "SELECT create_hypertable('stock_metadata', 'date_scraped', if_not_exists => TRUE);"
-
 echo "Granting privileges to user..."
 sudo -u postgres psql -d $DB_NAME -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $DB_USER;"
 sudo -u postgres psql -d $DB_NAME -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $DB_USER;"
