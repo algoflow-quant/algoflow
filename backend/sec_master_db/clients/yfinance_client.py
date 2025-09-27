@@ -192,11 +192,11 @@ class YfinanceClient:
                 """)
 
                 # Execute the query for this record
-                # record is a dictionary with keys: 'Date', 'Open', 'High', 'Low', 'Close', 'Volume'
+                # Columns from yfinance are: 'Date', 'Open', 'High', 'Low', 'Close', 'Volume'
                 session.execute(query, {
                     'security_id': security_id,
                     'date': record['Date'],
-                    'open': record['Open'], 
+                    'open': record['Open'],
                     'high': record['High'],
                     'low': record['Low'],
                     'close': record['Close'],
@@ -427,4 +427,43 @@ class YfinanceClient:
             raise
         finally:
             session.close()
+
+    def insert_multiple_ohlcv(self, ohlcv_data: Dict[str, pd.DataFrame], update_metadata: bool = True) -> Dict[str, bool]:
+        """
+        Insert OHLCV data for multiple tickers
+
+        Args:
+            ohlcv_data: Dictionary mapping ticker symbols to their OHLCV DataFrames
+            update_metadata: Whether to update security metadata (start_date, end_date, bar_count)
+
+        Returns:
+            Dictionary mapping ticker to success status
+        """
+        self.logger.info(f"Starting bulk OHLCV insert for {len(ohlcv_data)} tickers")
+        results = {}
+
+        for ticker, df in ohlcv_data.items():
+            try:
+                self.logger.debug(f"Processing {ticker} with {len(df)} records")
+
+                # Insert OHLCV data using existing method
+                self.insert_ohlcv(ticker, df)
+
+                # Update security metadata if requested
+                if update_metadata:
+                    self.update_security_metadata(ticker)
+
+                results[ticker] = True
+                self.logger.info(f" Successfully stored {ticker}")
+
+            except Exception as e:
+                self.logger.error(f" Failed to store {ticker}: {e}")
+                results[ticker] = False
+                continue
+
+        # Log summary
+        success_count = sum(1 for v in results.values() if v)
+        self.logger.info(f"Bulk insert complete: {success_count}/{len(ohlcv_data)} successful")
+
+        return results
     
