@@ -18,7 +18,12 @@
 ### Fix
 
 - **data-pipeline**: removed nan from ticker list json
-- **sec_master**: fixed database schema and added security master - Added security master table - replaced ticker with security_id in ohlcv - replaced ticker with secutity_id in stock_meta_data - made schemas yfinance for every table - changed indexes
+- **sec_master**: fixed database schema and added security master
+    - added security master table
+    - replaced ticker with security_id in ohlcv
+    - replaced ticker with secutity_id in stock_meta_data
+    - made schemas yfinance for every table
+    - changed indexes
 - **data-pipeline**: removed nan from ticker list json
 - **ci**: add permissions to merge restriction workflow
 - **ci**: increase commit header length limit to 140 chars
