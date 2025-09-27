@@ -85,6 +85,7 @@ class YfinanceClient:
             
             # Return the security id
             return row[0] if row else None
+        
         except Exception as e:
             self.logger.error(f"Error getting security_id for {ticker}: {e}")
             return None
@@ -99,10 +100,66 @@ class YfinanceClient:
         pass
     
     # Yfinance Schema storage
-    def insert_ohlcv(self, ticker: str, data: pd.DataFrame):
+    def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> None:
         """
         Insert OHLCV data for a single ticker
         """
+
+        session = self.Session()
+
+        try:
+            # Get security id
+            security_id = self.get_security_id(ticker)
+
+            if not security_id:
+                # Ticker not found
+                self.logger.error(f"Security {ticker} not found. Insert ticker first")
+                return None
+
+            # Convert df into dict
+            records = data.reset_index().to_dict('records')
+
+            # Insert each record (each day of data)
+            for record in records:
+                query = text("""
+                    INSERT INTO yfinance.ohlcv_data
+                    (security_id, date, open, high, low, close, volume)
+                    VALUES
+                    (:security_id, :date, :open, :high, :low, :close, :volume)
+                    ON CONFLICT (security_id, date)
+                    DO UPDATE SET
+                        open = EXCLUDED.open,
+                        high = EXCLUDED.high,
+                        low = EXCLUDED.low,
+                        close = EXCLUDED.close,
+                        volume = EXCLUDED.volume
+                """)
+
+                # Execute the query for this record
+                # record is a dictionary with keys: 'Date', 'Open', 'High', 'Low', 'Close', 'Volume'
+                session.execute(query, {
+                    'security_id': security_id,
+                    'date': record['Date'],
+                    'open': record['Open'], 
+                    'high': record['High'],
+                    'low': record['Low'],
+                    'close': record['Close'],
+                    'volume': record['Volume']
+                })
+
+            # Commit all the inserts, saves db changes
+            session.commit()
+            self.logger.info(f"Inserted {len(records)} OHLCV records for {ticker}")
+
+        except Exception as e:
+            session.rollback()
+            self.logger.error(f"Error inserting OHLCV for {ticker}: {e}")
+            raise
+        finally:
+            session.close()
+            
+            
+        
     
     def insert_metadata(self, metadata_dict: Dict[str, Dict]):
         """
