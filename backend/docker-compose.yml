@@ -4,7 +4,7 @@ services:
   # PostgreSQL with TimescaleDB for time-series data
   postgres:
     image: timescale/timescaledb:latest-pg15
-    container_name: algoflow_postgres
+    container_name: algoflow_sec_master_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
