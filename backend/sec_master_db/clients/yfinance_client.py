@@ -41,7 +41,7 @@ class YfinanceClient:
             provider: Data provider name (default: 'yfinance')
 
         Returns:
-            None. Commits to database on success, rolls back on failure.
+            dict: {'success': bool, 'count': int, 'message': str}
 
         Raises:
             Exception: If database insertion fails
@@ -73,13 +73,14 @@ class YfinanceClient:
             session.execute(query, {'provider': provider, 'groupings': groupings, 'tickers': tickers})
             
             # Commit saves DB changes
-            session.commit() 
-            self.logger.info(f"Successfully inserted {len(tickers)} tickers")
-            
+            session.commit()
+            self.logger.info(f"[DB-INSERT] Securities: {len(tickers)} tickers added")
+            return {'success': True, 'count': len(tickers), 'message': f"Inserted {len(tickers)} tickers"}
+
         except Exception as e:
             session.rollback()  # Important: rollback on error so we dont commit partial data
-            self.logger.error(f"Error inserting tickers: {e}")
-            raise  # Re-raise so caller knows it failed
+            self.logger.error(f"[DB-INSERT] Securities failed: {str(e)[:100]}")
+            return {'success': False, 'count': 0, 'message': str(e)}
         finally:
             session.close()
     
@@ -121,7 +122,7 @@ class YfinanceClient:
             return row[0] if row else None
         
         except Exception as e:
-            self.logger.error(f"Error getting security_id for {ticker}: {e}")
+            self.logger.error(f"[DB-QUERY] Failed to get ID for {ticker}: {str(e)[:100]}")
             return None
         finally:
             session.close()
@@ -137,7 +138,7 @@ class YfinanceClient:
             bar_count: Number of OHLCV data points (auto-calculated if None)
 
         Returns:
-            None. Updates are committed to database.
+            dict: {'success': bool, 'ticker': str, 'message': str}
 
         Raises:
             Exception: If ticker not found or update fails
@@ -159,8 +160,8 @@ class YfinanceClient:
             security_id = self.get_security_id(ticker)
 
             if not security_id:
-                self.logger.error(f"Security {ticker} not found")
-                return None
+                self.logger.warning(f"[DB-QUERY] Security not found: {ticker}")
+                return {'success': False, 'ticker': ticker, 'message': f"Security {ticker} not found"}
 
             # If dates not provided, calculate from OHLCV table
             if not start_date or not end_date or bar_count is None:
@@ -200,12 +201,13 @@ class YfinanceClient:
             })
 
             session.commit()
-            self.logger.info(f"Updated security metadata for {ticker}: {start_date} to {end_date} ({bar_count} bars)")
+            self.logger.info(f"[DB-UPDATE] {ticker}: {bar_count} bars | {start_date} to {end_date}")
+            return {'success': True, 'ticker': ticker, 'message': f"Updated {ticker}: {bar_count} bars"}
 
         except Exception as e:
             session.rollback()
-            self.logger.error(f"Error updating security metadata for {ticker}: {e}")
-            raise
+            self.logger.error(f"[DB-UPDATE] Failed {ticker}: {str(e)[:100]}")
+            return {'success': False, 'ticker': ticker, 'message': str(e)}
         finally:
             session.close()
     
@@ -220,7 +222,7 @@ class YfinanceClient:
                   Date can be either index or column.
 
         Returns:
-            None. Data is committed to yfinance.ohlcv_data table.
+            dict: {'success': bool, 'ticker': str, 'count': int, 'message': str}
 
         Raises:
             Exception: If ticker not found or insertion fails
@@ -242,8 +244,8 @@ class YfinanceClient:
 
             if not security_id:
                 # Ticker not found
-                self.logger.error(f"Security {ticker} not found. Insert ticker first")
-                return None
+                self.logger.warning(f"[DB-INSERT] OHLCV skipped - {ticker} not in database")
+                return {'success': False, 'ticker': ticker, 'count': 0, 'message': f"Security {ticker} not found"}
 
             # Convert df into dict
             records = data.reset_index().to_dict('records')
@@ -278,12 +280,13 @@ class YfinanceClient:
 
             # Commit all the inserts, saves db changes
             session.commit()
-            self.logger.info(f"Inserted {len(records)} OHLCV records for {ticker}")
+            self.logger.info(f"[DB-INSERT] OHLCV {ticker}: {len(records)} records")
+            return {'success': True, 'ticker': ticker, 'count': len(records), 'message': f"Inserted {len(records)} records"}
 
         except Exception as e:
             session.rollback()
-            self.logger.error(f"Error inserting OHLCV for {ticker}: {e}")
-            raise
+            self.logger.error(f"[DB-INSERT] OHLCV failed {ticker}: {str(e)[:100]}")
+            return {'success': False, 'ticker': ticker, 'count': 0, 'message': str(e)}
         finally:
             session.close()
             
@@ -304,7 +307,7 @@ class YfinanceClient:
                      - And many more (see schema for full list)
 
         Returns:
-            None. Metadata is committed to yfinance.stock_metadata table.
+            dict: {'success': bool, 'ticker': str, 'message': str}
 
         Raises:
             Exception: If ticker not found or insertion fails
@@ -323,8 +326,8 @@ class YfinanceClient:
             security_id = self.get_security_id(ticker)
 
             if not security_id:
-                self.logger.error(f"Security {ticker} not found. Insert ticker first")
-                return None
+                self.logger.warning(f"[DB-INSERT] OHLCV skipped - {ticker} not in database")
+                return {'success': False, 'ticker': ticker, 'message': f"Security {ticker} not found"}
 
             # Build the INSERT query with all columns
             query = text("""
@@ -514,12 +517,13 @@ class YfinanceClient:
             # Execute the query
             session.execute(query, params)
             session.commit()
-            self.logger.info(f"Successfully inserted metadata for {ticker}")
+            self.logger.info(f"[DB-INSERT] Metadata: {ticker} stored")
+            return {'success': True, 'ticker': ticker, 'message': f"Inserted metadata for {ticker}"}
 
         except Exception as e:
             session.rollback()
-            self.logger.error(f"Error inserting metadata for {ticker}: {e}")
-            raise
+            self.logger.error(f"[DB-INSERT] Metadata failed {ticker}: {str(e)[:100]}")
+            return {'success': False, 'ticker': ticker, 'message': str(e)}
         finally:
             session.close()
 
@@ -549,31 +553,35 @@ class YfinanceClient:
             Continues processing even if individual tickers fail.
             Logs progress and provides detailed error messages.
         """
-        self.logger.info(f"Starting bulk OHLCV insert for {len(ohlcv_data)} tickers")
+        self.logger.info(f"[DB-BULK] Starting OHLCV insert: {len(ohlcv_data)} tickers")
         results = {}
 
         for ticker, df in ohlcv_data.items():
             try:
-                self.logger.debug(f"Processing {ticker} with {len(df)} records")
+                self.logger.debug(f"[DB-BULK] Processing {ticker}: {len(df)} records")
 
                 # Insert OHLCV data using existing method
-                self.insert_ohlcv(ticker, df)
+                ohlcv_result = self.insert_ohlcv(ticker, df)
+                if not ohlcv_result['success']:
+                    raise Exception(ohlcv_result['message'])
 
                 # Update security metadata if requested
                 if update_metadata:
-                    self.update_security_metadata(ticker)
+                    meta_result = self.update_security_metadata(ticker)
+                    if not meta_result['success']:
+                        self.logger.warning(f"[DB-BULK] Metadata update failed {ticker}: {meta_result['message'][:50]}")
 
                 results[ticker] = True
-                self.logger.info(f" Successfully stored {ticker}")
+                self.logger.debug(f"[DB-BULK] ✓ {ticker}")
 
             except Exception as e:
-                self.logger.error(f" Failed to store {ticker}: {e}")
+                self.logger.error(f"[DB-BULK] ✗ {ticker}: {str(e)[:100]}")
                 results[ticker] = False
                 continue
 
         # Log summary
         success_count = sum(1 for v in results.values() if v)
-        self.logger.info(f"Bulk insert complete: {success_count}/{len(ohlcv_data)} successful")
+        self.logger.info(f"[DB-BULK] Complete: {success_count}/{len(ohlcv_data)} success")
 
         return results
 
@@ -604,7 +612,7 @@ class YfinanceClient:
         try:
             if groupings:
                 # Get tickers that have ANY of the specified groupings
-                self.logger.info(f"Fetching tickers for groupings: {groupings}")
+                self.logger.info(f"[DB-QUERY] Fetching tickers: groups={groupings}")
 
                 query = text("""
                     SELECT DISTINCT ticker
@@ -620,7 +628,7 @@ class YfinanceClient:
                 })
             else:
                 # Get all tickers for the provider
-                self.logger.info(f"Fetching all tickers for provider: {provider}")
+                self.logger.info(f"[DB-QUERY] Fetching all {provider} tickers")
 
                 query = text("""
                     SELECT ticker
@@ -632,12 +640,12 @@ class YfinanceClient:
                 result = session.execute(query, {'provider': provider})
 
             tickers = [row[0] for row in result.fetchall()]
-            self.logger.info(f"Retrieved {len(tickers)} tickers")
+            self.logger.info(f"[DB-QUERY] Found {len(tickers)} tickers")
 
             return tickers
 
         except Exception as e:
-            self.logger.error(f"Error fetching tickers: {e}")
+            self.logger.error(f"[DB-QUERY] Failed to fetch tickers: {str(e)[:100]}")
             raise
         finally:
             session.close()

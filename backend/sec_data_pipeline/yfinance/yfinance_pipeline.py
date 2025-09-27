@@ -28,7 +28,7 @@ class YfinancePipeline:
         Returns:
             Dictionary mapping ticker to metadata dict
         """
-        self.logger.info(f"Starting metadata scrape for {len(tickers)} tickers")
+        self.logger.info(f"[METADATA] Starting scrape for {len(tickers)} tickers")
 
         metadata_dict = {}
         failed_tickers = []
@@ -42,13 +42,13 @@ class YfinancePipeline:
 
         for ticker in tqdm(tickers[0:400], desc="Scraping metadata"):
             try:
-                self.logger.debug(f"Fetching metadata for {ticker}")
+                self.logger.debug(f"[METADATA] Fetching: {ticker}")
                 stock = yf.Ticker(ticker)
                 info = stock.info
 
                 # Skip if no data returned
                 if not info or 'symbol' not in info:
-                    self.logger.debug(f"No data returned for {ticker}")
+                    self.logger.warning(f"[METADATA] No data: {ticker}")
                     failed_tickers.append(ticker)
                     continue
 
@@ -157,11 +157,11 @@ class YfinancePipeline:
                         field_counts[key] = field_counts.get(key, 0) + (1 if value is not None else 0)
 
             except Exception as e:
-                self.logger.error(f"Error scraping metadata for {ticker}: {e}")
+                self.logger.error(f"[METADATA] Failed {ticker}: {str(e)[:100]}")
                 failed_tickers.append(ticker)
                 continue
 
-        self.logger.info(f"Metadata scrape complete: {len(metadata_dict)} successful, {len(failed_tickers)} failed")
+        self.logger.info(f"[METADATA] Complete: {len(metadata_dict)} success | {len(failed_tickers)} failed")
         return metadata_dict
     
     def scrape_date_range(
@@ -186,7 +186,7 @@ class YfinancePipeline:
         data_dict = {}
         failed_tickers = []
         total = len(tickers)
-        self.logger.info(f"Starting date range scrape: {total} tickers from {start_date} to {end_date}")
+        self.logger.info(f"[OHLCV] Starting: {total} tickers | {start_date} to {end_date}")
         
         # Configure logger to supress yfinance output
         yf_logger = logging.getLogger('yfinance')
@@ -194,7 +194,7 @@ class YfinancePipeline:
         
         for i, ticker in tqdm(enumerate(tickers, 1), desc="Scraping tickers"):
             try:
-                self.logger.debug(f"Downloading data for {ticker}")
+                self.logger.debug(f"[OHLCV] Downloading: {ticker}")
                 # Download the data for a ticker
                 ticker_data = yf.download(
                     ticker,
@@ -211,28 +211,28 @@ class YfinancePipeline:
                     if isinstance(ticker_data.columns, pd.MultiIndex):
                         ticker_data.columns = ticker_data.columns.droplevel(1)
 
-                    self.logger.debug(f"Successfully downloaded {len(ticker_data)} rows for {ticker}")
+                    self.logger.debug(f"[OHLCV] Success {ticker}: {len(ticker_data)} rows")
                     data_dict[ticker] = ticker_data
                     if i % 100 == 0:
-                        self.logger.info(f"Progress: {i}/{total} tickers scraped, {len(failed_tickers)} failed")
+                        self.logger.info(f"[OHLCV] Progress: {i}/{total} done | {len(failed_tickers)} failed")
                 else:
-                    self.logger.debug(f"No data returned for {ticker}")
+                    self.logger.warning(f"[OHLCV] No data: {ticker}")
                     failed_tickers.append(ticker)
             
             except Exception as e:
-                self.logger.error(f"Error downloading data for {ticker}: {e}")
+                self.logger.error(f"[OHLCV] Failed {ticker}: {str(e)[:100]}")
                 failed_tickers.append(ticker)
                 continue
 
-        self.logger.info(f"Date range scrape complete: {len(data_dict)} successful, {len(failed_tickers)} failed")
+        self.logger.info(f"[OHLCV] Complete: {len(data_dict)} success | {len(failed_tickers)} failed")
         if failed_tickers and len(failed_tickers) <= 10:
-            self.logger.info(f"Failed tickers: {failed_tickers}")
+            self.logger.warning(f"[OHLCV] Failed list: {failed_tickers}")
 
         return data_dict
     
     def _scrape_sp500_tickers(self) -> List[str]:
         """Scrapes S&P 500 tickers from Wikipedia"""
-        self.logger.info("Scraping S&P 500 tickers from Wikipedia")
+        self.logger.info("[SCRAPER] Fetching S&P 500 tickers from Wikipedia")
         sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 
         # Add headers to avoid 403 error
@@ -241,7 +241,7 @@ class YfinancePipeline:
         }
 
         # Fetch the HTML with headers
-        self.logger.debug(f"Fetching S&P 500 list from {sp500_url}")
+        self.logger.debug(f"[SCRAPER] GET {sp500_url}")
         response = requests.get(sp500_url, headers=headers)
         self.logger.debug(f"Response status: {response.status_code}")
 
@@ -254,12 +254,12 @@ class YfinancePipeline:
 
         # Clean tickers (replace dots with dashes for BRK.B -> BRK-B)
         tickers = [ticker.replace('.', '-') for ticker in tickers]
-        self.logger.info(f"Successfully scraped {len(tickers)} S&P 500 tickers")
+        self.logger.info(f"[SCRAPER] S&P 500: {len(tickers)} tickers found")
         return tickers
     
     def _scrape_russell2000_tickers(self) -> List[str]:
         """Scrapes Russell 2000 tickers from stockanalysis.com"""
-        self.logger.info("Scraping Russell 2000 tickers from stockanalysis.com")
+        self.logger.info("[SCRAPER] Fetching Russell 2000 tickers")
         russell_url = "https://stockanalysis.com/list/russell-2000/"
 
         # Add headers to avoid 403 error
@@ -268,7 +268,7 @@ class YfinancePipeline:
         }
 
         # Fetch the HTML with headers
-        self.logger.debug(f"Fetching Russell 2000 list from {russell_url}")
+        self.logger.debug(f"[SCRAPER] GET {russell_url}")
         response = requests.get(russell_url, headers=headers)
         self.logger.debug(f"Response status: {response.status_code}")
 
@@ -288,16 +288,16 @@ class YfinancePipeline:
         # Clean tickers - remove any non-string entries
         tickers = [str(ticker).strip() for ticker in tickers if ticker and str(ticker).strip()]
 
-        self.logger.info(f"Successfully scraped {len(tickers)} Russell 2000 tickers")
+        self.logger.info(f"[SCRAPER] Russell 2000: {len(tickers)} tickers found")
         # Return ticker list
         return tickers
     
     def _scrape_nasdaq_tickers(self) -> List[str]:
         """Scrapes tickers from nasdaq"""
-        self.logger.info("Scraping NASDAQ tickers from nasdaqtrader.com")
+        self.logger.info("[SCRAPER] Fetching NASDAQ tickers")
         nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
 
-        self.logger.debug(f"Fetching NASDAQ list from {nasdaq_url}")
+        self.logger.debug(f"[SCRAPER] GET {nasdaq_url}")
         # Read the nasdaq url file with | as the separator
         df = pd.read_csv(nasdaq_url, sep='|')
         
@@ -307,7 +307,7 @@ class YfinancePipeline:
         # Extract the Symbol column to a list & remove test symbol
         tickers = df[df['Test Issue'] == 'N']['Symbol'].tolist()
 
-        self.logger.info(f"Successfully scraped {len(tickers)} NASDAQ tickers")
+        self.logger.info(f"[SCRAPER] NASDAQ: {len(tickers)} tickers found")
         # Return ticker list
         return tickers
     
@@ -333,12 +333,12 @@ class YfinancePipeline:
         end_date = date.today()
         start_date = end_date - timedelta(days=test_days)
 
-        self.logger.info(f"Starting validation of {len(tickers)} tickers (one at a time)")
+        self.logger.info(f"[VALIDATE] Starting: {len(tickers)} tickers")
 
         # Process one ticker at a time with clean progress bar
         for ticker in tqdm(tickers, desc="Validating tickers", ncols=100, leave=True):
             try:
-                self.logger.debug(f"Validating ticker: {ticker}")
+                self.logger.debug(f"[VALIDATE] Checking: {ticker}")
 
                 # Download single ticker with explicit auto_adjust
                 data = yf.download(
@@ -352,17 +352,17 @@ class YfinancePipeline:
 
                 # Check if we got valid data
                 if data is not None and not data.empty and len(data) > 0:
-                    self.logger.debug(f"Valid ticker: {ticker}")
+                    self.logger.debug(f"[VALIDATE] ✓ {ticker}")
                     valid_tickers.append(ticker)
                 else:
-                    self.logger.debug(f"Invalid ticker (no data): {ticker}")
+                    self.logger.debug(f"[VALIDATE] ✗ {ticker}: no data")
                     invalid_tickers.append(ticker)
 
             except Exception as e:
-                self.logger.debug(f"Error validating {ticker}: {e}")
+                self.logger.debug(f"[VALIDATE] ✗ {ticker}: {str(e)[:50]}")
                 invalid_tickers.append(ticker)
 
-        self.logger.info(f"Validation complete: {len(valid_tickers)} valid, {len(invalid_tickers)} invalid")
+        self.logger.info(f"[VALIDATE] Complete: {len(valid_tickers)} valid | {len(invalid_tickers)} invalid")
 
         return {
             'valid': valid_tickers,
