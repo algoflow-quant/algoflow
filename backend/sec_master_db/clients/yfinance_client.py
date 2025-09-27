@@ -9,7 +9,14 @@ from datetime import date
 class YfinanceClient:
     def __init__(self, db_url: Optional[str] = None):
         """
-        Initialize with a db_url or defualt to the local dev
+        Initialize YfinanceClient for database operations.
+
+        Args:
+            db_url: PostgreSQL connection string. If None, uses SEC_MASTER_DB_URL_PROD env var
+                   or defaults to local dev database.
+
+        Example:
+            client = YfinanceClient("postgresql://user:pass@localhost:5432/sec_master_dev")
         """
         self.db_url = db_url or os.getenv(
               'SEC_MASTER_DB_URL_PROD',
@@ -26,7 +33,24 @@ class YfinanceClient:
     # Security management methods    
     def insert_securities(self, tickers: List[str], groupings: List[str], provider: str = 'yfinance'):
         """
-        Insert tickers into securities table with groupings, ticker, and date_created
+        Insert multiple ticker symbols into the security_master.securities table.
+
+        Args:
+            tickers: List of ticker symbols (e.g., ['AAPL', 'MSFT', 'GOOGL'])
+            groupings: List of grouping tags (e.g., ['sp500', 'tech', 'large-cap'])
+            provider: Data provider name (default: 'yfinance')
+
+        Returns:
+            None. Commits to database on success, rolls back on failure.
+
+        Raises:
+            Exception: If database insertion fails
+
+        Example:
+            client.insert_securities(['AAPL', 'MSFT'], ['sp500', 'nasdaq'])
+
+        Note:
+            Uses ON CONFLICT DO NOTHING, so duplicate tickers are silently skipped.
         """
         
         session = self.Session()
@@ -59,15 +83,24 @@ class YfinanceClient:
         finally:
             session.close()
     
-    def get_tickers(self, groupings: Optional[str] = None): # -> List[str]:
-        """
-        Get all tickers, optionally filtered by multiple groupings
-        """
-        pass
-      
     def get_security_id(self, ticker: str, provider: str = 'yfinance') -> Optional[int]:
         """
-        Get the security id for a ticker/provider combo
+        Retrieve the unique security_id for a ticker symbol.
+
+        Args:
+            ticker: Ticker symbol (e.g., 'AAPL')
+            provider: Data provider name (default: 'yfinance')
+
+        Returns:
+            int: The security_id if found, None if ticker doesn't exist
+
+        Example:
+            security_id = client.get_security_id('AAPL')
+            if security_id:
+                print(f"AAPL has ID: {security_id}")
+
+        Note:
+            This ID is used as foreign key in OHLCV and metadata tables.
         """
         session = self.Session()
         
@@ -95,8 +128,29 @@ class YfinanceClient:
       
     def update_security_metadata(self, ticker: str, start_date: Optional[date] = None, end_date: Optional[date] = None, bar_count: Optional[int] = None):
         """
-        Update security_master.securities with data availability info
-        Updates: start_data, end_data, bar_count after OHLCV insertion
+        Update security's data range and bar count in the securities table.
+
+        Args:
+            ticker: Ticker symbol to update
+            start_date: Earliest date of available data (auto-calculated if None)
+            end_date: Latest date of available data (auto-calculated if None)
+            bar_count: Number of OHLCV data points (auto-calculated if None)
+
+        Returns:
+            None. Updates are committed to database.
+
+        Raises:
+            Exception: If ticker not found or update fails
+
+        Example:
+            # Auto-calculate from OHLCV data
+            client.update_security_metadata('AAPL')
+
+            # Or specify manually
+            client.update_security_metadata('AAPL', date(2020, 1, 1), date(2024, 12, 31), 1000)
+
+        Note:
+            If dates/count not provided, queries OHLCV table to calculate them.
         """
         session = self.Session()
 
@@ -158,7 +212,26 @@ class YfinanceClient:
     # Yfinance Schema storage
     def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> None:
         """
-        Insert OHLCV data for a single ticker
+        Insert OHLCV (Open, High, Low, Close, Volume) data for a single ticker.
+
+        Args:
+            ticker: Ticker symbol (must exist in securities table)
+            data: DataFrame with columns: Date (index), Open, High, Low, Close, Volume
+                  Date can be either index or column.
+
+        Returns:
+            None. Data is committed to yfinance.ohlcv_data table.
+
+        Raises:
+            Exception: If ticker not found or insertion fails
+
+        Example:
+            import yfinance as yf
+            df = yf.download('AAPL', start='2024-01-01', end='2024-12-31')
+            client.insert_ohlcv('AAPL', df)
+
+        Note:
+            Uses ON CONFLICT UPDATE to handle duplicate dates (updates existing records).
         """
 
         session = self.Session()
@@ -219,7 +292,29 @@ class YfinanceClient:
     
     def insert_metadata(self, ticker: str, metadata: Dict):
         """
-        Insert metadata for a ticker into yfinance.stock_metadata table
+        Insert comprehensive financial metadata for a ticker.
+
+        Args:
+            ticker: Ticker symbol (must exist in securities table)
+            metadata: Dictionary containing financial metrics. Expected keys include:
+                     - Company info: company_name, exchange, sector, industry, country
+                     - Valuation: market_cap, enterprise_value, price_to_book, forward_pe
+                     - Financials: gross_margin, operating_margin, profit_margin, debt_to_equity
+                     - Performance: beta, 52_week_high, 52_week_low, average_volume
+                     - And many more (see schema for full list)
+
+        Returns:
+            None. Metadata is committed to yfinance.stock_metadata table.
+
+        Raises:
+            Exception: If ticker not found or insertion fails
+
+        Example:
+            metadata = pipeline.scrape_metadata(['AAPL'])
+            client.insert_metadata('AAPL', metadata['AAPL'])
+
+        Note:
+            Missing keys are stored as NULL. Uses ON CONFLICT UPDATE for existing records.
         """
         session = self.Session()
 
@@ -430,14 +525,29 @@ class YfinanceClient:
 
     def insert_multiple_ohlcv(self, ohlcv_data: Dict[str, pd.DataFrame], update_metadata: bool = True) -> Dict[str, bool]:
         """
-        Insert OHLCV data for multiple tickers
+        Bulk insert OHLCV data for multiple tickers with progress tracking.
 
         Args:
             ohlcv_data: Dictionary mapping ticker symbols to their OHLCV DataFrames
-            update_metadata: Whether to update security metadata (start_date, end_date, bar_count)
+                       Format: {'AAPL': df1, 'MSFT': df2, ...}
+            update_metadata: If True, updates each security's date range and bar count
 
         Returns:
-            Dictionary mapping ticker to success status
+            Dictionary mapping each ticker to success status (True/False)
+            Format: {'AAPL': True, 'MSFT': True, 'INVALID': False}
+
+        Example:
+            # Download and store data for multiple tickers
+            ohlcv_data = pipeline.scrape_date_range(['AAPL', 'MSFT'], start_date, end_date)
+            results = client.insert_multiple_ohlcv(ohlcv_data)
+
+            # Check results
+            failed = [t for t, success in results.items() if not success]
+            print(f"Failed tickers: {failed}")
+
+        Note:
+            Continues processing even if individual tickers fail.
+            Logs progress and provides detailed error messages.
         """
         self.logger.info(f"Starting bulk OHLCV insert for {len(ohlcv_data)} tickers")
         results = {}
@@ -466,4 +576,68 @@ class YfinanceClient:
         self.logger.info(f"Bulk insert complete: {success_count}/{len(ohlcv_data)} successful")
 
         return results
-    
+
+    def get_tickers(self, groupings: Optional[List[str]] = None, provider: str = 'yfinance') -> List[str]:
+        """
+        Get tickers from database, optionally filtered by groupings
+
+        Args:
+            groupings: Optional list of groupings to filter by (e.g., ['sp500', 'nasdaq'])
+                      If None, returns all tickers for the provider
+            provider: Data provider (default: 'yfinance')
+
+        Returns:
+            List of ticker symbols
+
+        Examples:
+            # Get all tickers
+            all_tickers = client.get_tickers()
+
+            # Get S&P 500 tickers
+            sp500 = client.get_tickers(['sp500'])
+
+            # Get both S&P 500 and NASDAQ tickers
+            combined = client.get_tickers(['sp500', 'nasdaq'])
+        """
+        session = self.Session()
+
+        try:
+            if groupings:
+                # Get tickers that have ANY of the specified groupings
+                self.logger.info(f"Fetching tickers for groupings: {groupings}")
+
+                query = text("""
+                    SELECT DISTINCT ticker
+                    FROM security_master.securities
+                    WHERE provider = :provider
+                    AND groupings && :groupings_array  -- Array overlap operator
+                    ORDER BY ticker
+                """)
+
+                result = session.execute(query, {
+                    'provider': provider,
+                    'groupings_array': groupings
+                })
+            else:
+                # Get all tickers for the provider
+                self.logger.info(f"Fetching all tickers for provider: {provider}")
+
+                query = text("""
+                    SELECT ticker
+                    FROM security_master.securities
+                    WHERE provider = :provider
+                    ORDER BY ticker
+                """)
+
+                result = session.execute(query, {'provider': provider})
+
+            tickers = [row[0] for row in result.fetchall()]
+            self.logger.info(f"Retrieved {len(tickers)} tickers")
+
+            return tickers
+
+        except Exception as e:
+            self.logger.error(f"Error fetching tickers: {e}")
+            raise
+        finally:
+            session.close()
