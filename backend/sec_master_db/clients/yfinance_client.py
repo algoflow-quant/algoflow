@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import logging
 from typing import Optional, List, Dict
@@ -29,14 +29,38 @@ class YfinanceClient:
         """
         pass
     
-    def get_tickers(self, groupings: str = None) -> List[str]:
-        """Get all tickers, optionally filtered by multiple groupings"""
+    def get_tickers(self, groupings: Optional[str] = None): # -> List[str]:
+        """
+        Get all tickers, optionally filtered by multiple groupings
+        """
         pass
       
-    def get_security_id(self, ticker: str, _provider: str = 'yfinance') -> int:
+    def get_security_id(self, ticker: str, provider: str = 'yfinance') -> Optional[int]:
         """
-        get the security id for a ticker/provider combo
+        Get the security id for a ticker/provider combo
         """
+        session = self.Session()
+        
+        try:
+            query = text("""
+                SELECT security_id
+                FROM security_master.securities
+                WHERE ticker = :ticker AND provider = :provider
+            """)
+            
+            # Execute SQL query
+            result = session.execute(query, {'ticker': ticker, 'provider': provider})
+            
+            # Get the first row
+            row = result.fetchone()
+            
+            # Return the security id
+            return row[0] if row else None
+        except Exception as e:
+            self.logger.error(f"Error getting security_id for {ticker}: {e}")
+            return None
+        finally:
+            session.close()
       
     # Metadata insertion methods
     def update_security_metadata(self, ticker: str, metadata: Dict):
