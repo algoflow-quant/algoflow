@@ -1,0 +1,10 @@
+# Dependencies needed inside Airflow container for DAGs
+yfinance
+pandas
+numpy
+psycopg2-binary
+sqlalchemy
+tqdm
+requests
+# Fix for Python 3.8 compatibility
+multitasking

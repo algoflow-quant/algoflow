@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL with TimescaleDB for time-series data
   postgres:
@@ -24,12 +22,13 @@ services:
     networks:
       - algoflow_network
 
+
   # Adminer - Database management UI
   adminer:
     image: adminer
     container_name: algoflow_adminer
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     depends_on:
@@ -50,16 +49,52 @@ services:
     networks:
       - algoflow_network
 
-  # Future services can be added here:
-  # api:
-  #   build: ./api
-  #   depends_on:
-  #     - postgres
-  #   networks:
-  #     - algoflow_network
+  # Airflow - Simple setup with admin/admin credentials
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: algoflow_airflow
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      - _AIRFLOW_DB_MIGRATE=true
+      - _AIRFLOW_WWW_USER_CREATE=true
+      - _AIRFLOW_WWW_USER_USERNAME=admin
+      - _AIRFLOW_WWW_USER_PASSWORD=admin
+      - _AIRFLOW_WWW_USER_ROLE=Admin
+      - _AIRFLOW_WWW_USER_EMAIL=admin@example.com
+      - _AIRFLOW_WWW_USER_FIRSTNAME=Admin
+      - _AIRFLOW_WWW_USER_LASTNAME=User
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./sec_data_pipeline:/opt/airflow/plugins/sec_data_pipeline
+      - ./sec_master_db:/opt/airflow/plugins/sec_master_db
+      - ./utils:/opt/airflow/plugins/utils
+      - airflow_db:/opt/airflow
+    ports:
+      - "8080:8080"
+    networks:
+      - algoflow_network
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init &&
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com || true &&
+        exec airflow standalone
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
+  airflow_db:
     driver: local
 
 networks:
