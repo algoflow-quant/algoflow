@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-import logging
+from utils.logger import get_logger
 from typing import Optional, List, Dict, Any
 import pandas as pd
 from datetime import date
@@ -27,7 +27,7 @@ class YfinanceClient:
         self.Session = sessionmaker(bind=self.engine)
         
         # Logger
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = get_logger(__name__)
         
         
     # Security management methods    
