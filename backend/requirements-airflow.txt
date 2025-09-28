@@ -6,5 +6,6 @@ psycopg2-binary
 sqlalchemy
 tqdm
 requests
-# Fix for Python 3.8 compatibility
+html5lib
+# Fix for Python 3.10 compatibility
 multitasking

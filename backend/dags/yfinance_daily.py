@@ -9,12 +9,11 @@ from datetime import datetime, timedelta, date
 # Import your modules
 import sys
 sys.path.append('/opt/airflow/plugins')
-from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline
-from sec_master_db.clients.yfinance_client import YfinanceClient
+from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline  # type: ignore
+from sec_master_db.clients.yfinance_client import YfinanceClient  # type: ignore 
 from airflow.providers.postgres.hooks.postgres import PostgresHook  # type: ignore
-from utils.logger import get_logger
+from utils.logger import get_logger  # type: ignore
 
-# Use your custom logger
 logger = get_logger(__name__)
 
 @dag(
@@ -23,6 +22,7 @@ logger = get_logger(__name__)
     schedule_interval='30 21 * * 1-5',  # 9:30 PM UTC (4:30 PM EST) on weekdays
     start_date=datetime(2024, 1, 1),
     catchup=False,
+    is_paused_upon_creation=True,  # Don't run immediately when turned on
     default_args={
         'owner': 'data-team',
         'retries': 3,
@@ -31,16 +31,16 @@ logger = get_logger(__name__)
     tags=['yfinance', 'daily'],
     params={
         'days_back': Param(
-            default=1,
+            default=5,
             type='integer',
             minimum=1,
             maximum=30,
-            description='Number of days to update (default: 1 for today)'
+            description='Number of days to update (default: 5 to catch up after weekends)'
         ),
         'update_metadata': Param(
-            default=True,  # Changed to True for automatic daily metadata updates
+            default=False,  # Metadata now auto-updates on Mondays only
             type='boolean',
-            description='Also update metadata (slower)'
+            description='Force metadata update (auto-updates on Mondays)'
         ),
     },
 )
@@ -53,20 +53,25 @@ def yfinance_daily():
         logger.info("Getting all yfinance tickers from database...")
 
         try:
-            # Connect to database
-            pg_hook = PostgresHook(postgres_conn_id='sec_master_postgres')
+            # Use environment variable for database connection
+            import os
+            from sqlalchemy import create_engine, text
+
+            db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev')
+            engine = create_engine(db_url)
 
             # Get ALL tickers with yfinance provider
-            sql = """
+            sql = text("""
                 SELECT DISTINCT ticker
                 FROM security_master.securities
                 WHERE ticker IS NOT NULL
                 AND provider = 'yfinance'
                 ORDER BY ticker;
-            """
+            """)
 
-            result = pg_hook.get_records(sql)
-            tickers = [row[0] for row in result] if result else []
+            with engine.connect() as conn:
+                result = conn.execute(sql)
+                tickers = [row[0] for row in result]
 
             logger.info(f"Found {len(tickers)} tickers to update")
             return tickers
@@ -88,25 +93,21 @@ def yfinance_daily():
         logger.info(f"Downloading {days_back} day(s) of data for {len(tickers)} tickers")
 
         pipeline = YfinancePipeline()
-        # Use the postgres container when running in Docker
-        db_url = 'postgresql://postgres:postgres@postgres:5432/sec_master_dev'
+        # Use environment variable for database connection
+        import os
+        db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev')
         client = YfinanceClient(db_url)
 
         # Calculate date range
         end_date = date.today()
         start_date = end_date - timedelta(days=days_back)
 
-        # Skip weekends if updating just today
-        if days_back == 1 and end_date.weekday() >= 5:  # Saturday=5, Sunday=6
-            logger.info(f"Today is weekend ({end_date}), adjusting to Friday")
-            # Go back to Friday
-            days_to_friday = end_date.weekday() - 4
-            start_date = end_date - timedelta(days=days_to_friday)
-            end_date = start_date
+        # No need to skip weekends anymore since we're downloading multiple days
+        # The yfinance API will only return trading days anyway
 
         logger.info(f"Date range: {start_date} to {end_date}")
 
-        # Download data
+        # Download data (no batching needed for daily - it's small)
         ohlcv_data = pipeline.scrape_date_range(
             tickers=tickers,
             start_date=start_date,
@@ -148,13 +149,23 @@ def yfinance_daily():
 
     @task
     def update_metadata(tickers: list, **context):
-        """Optionally update metadata"""
+        """Update metadata weekly (on Mondays) or when manually triggered"""
+        from datetime import datetime
+
         # Get parameter from context
-        should_update = bool(context['params'].get('update_metadata', False))
+        manual_update = bool(context['params'].get('update_metadata', False))
+
+        # Check if today is Monday (weekday() == 0)
+        is_monday = datetime.now().weekday() == 0
+
+        # Update if manually requested OR if it's Monday
+        should_update = manual_update or is_monday
 
         if not should_update:
-            logger.info("Skipping metadata update")
+            logger.info("Skipping metadata update (only updates on Mondays or when forced)")
             return {'skipped': True}
+
+        logger.info(f"Running metadata update (Monday: {is_monday}, Manual: {manual_update})")
 
         if not tickers:
             return {'success': 0, 'failed': 0}
@@ -162,13 +173,12 @@ def yfinance_daily():
         logger.info(f"Updating metadata for {len(tickers)} tickers")
 
         pipeline = YfinancePipeline()
-        # Use the postgres container when running in Docker
-        db_url = 'postgresql://postgres:postgres@postgres:5432/sec_master_dev'
+        # Use environment variable for database connection
+        import os
+        db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev')
         client = YfinanceClient(db_url)
 
-        # Update ALL metadata (remove limit)
-        logger.info(f"Processing metadata for all {len(tickers)} tickers")
-
+        # Download metadata (no batching needed for daily update)
         metadata_dict = pipeline.scrape_metadata(tickers)
 
         success_count = 0
