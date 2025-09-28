@@ -2,9 +2,10 @@ from typing import List, Dict, Any
 from datetime import datetime, date, timedelta
 import pandas as pd
 import yfinance as yf
-import logging
+from utils.logger import get_logger
 from tqdm import tqdm
 import requests
+import logging
 
 class YfinancePipeline:
     """
@@ -13,8 +14,7 @@ class YfinancePipeline:
     
     def __init__(self):
         # Set logger
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger = get_logger(__name__)
         
 
     def scrape_metadata(self, tickers: List[str]) -> Dict[str, Dict[str, Any]]:

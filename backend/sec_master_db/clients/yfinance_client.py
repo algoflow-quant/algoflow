@@ -1,8 +1,8 @@
 import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-import logging
-from typing import Optional, List, Dict
+from utils.logger import get_logger
+from typing import Optional, List, Dict, Any
 import pandas as pd
 from datetime import date
 
@@ -27,7 +27,7 @@ class YfinanceClient:
         self.Session = sessionmaker(bind=self.engine)
         
         # Logger
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = get_logger(__name__)
         
         
     # Security management methods    
@@ -212,7 +212,7 @@ class YfinanceClient:
             session.close()
     
     # Yfinance Schema storage
-    def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> None:
+    def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> Dict[str, Any]:
         """
         Insert OHLCV (Open, High, Low, Close, Volume) data for a single ticker.
 
