@@ -247,39 +247,53 @@ class YfinanceClient:
                 self.logger.warning(f"[DB-INSERT] OHLCV skipped - {ticker} not in database")
                 return {'success': False, 'ticker': ticker, 'count': 0, 'message': f"Security {ticker} not found"}
 
-            # Convert df into dict
-            records = data.reset_index().to_dict('records')
+            # Prepare data as tuples for maximum performance
+            records = data.reset_index()
 
-            # Insert each record (each day of data)
-            for record in records:
-                query = text("""
-                    INSERT INTO yfinance.ohlcv_data
-                    (security_id, date, open, high, low, close, volume)
-                    VALUES
-                    (:security_id, :date, :open, :high, :low, :close, :volume)
-                    ON CONFLICT (security_id, date)
-                    DO UPDATE SET
-                        open = EXCLUDED.open,
-                        high = EXCLUDED.high,
-                        low = EXCLUDED.low,
-                        close = EXCLUDED.close,
-                        volume = EXCLUDED.volume
-                """)
+            # Create list of tuples for execute_values (MUCH faster than execute_many)
+            insert_data = [
+                (
+                    security_id,
+                    row['Date'],
+                    float(row['Open']),
+                    float(row['High']),
+                    float(row['Low']),
+                    float(row['Close']),
+                    int(row['Volume'])
+                )
+                for _, row in records.iterrows()
+            ]
 
-                # Execute the query for this record
-                # Columns from yfinance are: 'Date', 'Open', 'High', 'Low', 'Close', 'Volume'
-                session.execute(query, {
-                    'security_id': security_id,
-                    'date': record['Date'],
-                    'open': record['Open'],
-                    'high': record['High'],
-                    'low': record['Low'],
-                    'close': record['Close'],
-                    'volume': record['Volume']
-                })
+            # Use raw psycopg2 execute_values for 10-100x speed improvement
+            from psycopg2.extras import execute_values
 
-            # Commit all the inserts, saves db changes
-            session.commit()
+            # Get the raw connection from SQLAlchemy session
+            raw_conn = session.connection().connection
+            cursor = raw_conn.cursor()
+
+            # Use execute_values with ON CONFLICT for bulk upsert (SUPER FAST!)
+            execute_values(
+                cursor,
+                """
+                INSERT INTO yfinance.ohlcv_data
+                (security_id, date, open, high, low, close, volume)
+                VALUES %s
+                ON CONFLICT (security_id, date)
+                DO UPDATE SET
+                    open = EXCLUDED.open,
+                    high = EXCLUDED.high,
+                    low = EXCLUDED.low,
+                    close = EXCLUDED.close,
+                    volume = EXCLUDED.volume
+                """,
+                insert_data,
+                template=None,  # Use default template
+                page_size=1000  # Process 1000 rows at a time
+            )
+
+            # Commit the changes
+            raw_conn.commit()
+            cursor.close()
             self.logger.info(f"[DB-INSERT] OHLCV {ticker}: {len(records)} records")
             return {'success': True, 'ticker': ticker, 'count': len(records), 'message': f"Inserted {len(records)} records"}
 

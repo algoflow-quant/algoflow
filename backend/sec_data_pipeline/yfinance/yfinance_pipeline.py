@@ -257,39 +257,51 @@ class YfinancePipeline:
         self.logger.info(f"[SCRAPER] S&P 500: {len(tickers)} tickers found")
         return tickers
     
-    def _scrape_russell2000_tickers(self) -> List[str]:
-        """Scrapes Russell 2000 tickers from stockanalysis.com"""
-        self.logger.info("[SCRAPER] Fetching Russell 2000 tickers")
-        russell_url = "https://stockanalysis.com/list/russell-2000/"
+    def _scrape_russell3000_tickers(self) -> List[str]:
+        """Scrapes Russell 3000 tickers from iShares IWV ETF holdings"""
+        self.logger.info("[SCRAPER] Fetching Russell 3000 tickers from iShares IWV ETF")
 
-        # Add headers to avoid 403 error
+        # IWV is the iShares Russell 3000 ETF - direct CSV download URL
+        csv_url = "https://www.ishares.com/us/products/239714/ishares-russell-3000-etf/1467271812596.ajax?fileType=csv&fileName=IWV_holdings&dataType=fund"
+
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
 
-        # Fetch the HTML with headers
-        self.logger.debug(f"[SCRAPER] GET {russell_url}")
-        response = requests.get(russell_url, headers=headers)
-        self.logger.debug(f"Response status: {response.status_code}")
+        response = requests.get(csv_url, headers=headers)
 
-        # Read the table from the HTML
-        tables = pd.read_html(response.text)
-        df = tables[0]
+        if response.status_code != 200:
+            raise ValueError(f"Failed to download Russell 3000 data from iShares: Status {response.status_code}")
 
-        # Extract tickers from Symbol column (or first column if Symbol doesn't exist)
-        if 'Symbol' in df.columns:
-            tickers = df['Symbol'].tolist()
-        elif 'Ticker' in df.columns:
-            tickers = df['Ticker'].tolist()
-        else:
-            # Use first column as fallback
-            tickers = df.iloc[:, 0].tolist()
+        # Parse CSV - iShares CSV has metadata in first ~10 rows
+        from io import StringIO
+        lines = response.text.split('\n')
 
-        # Clean tickers - remove any non-string entries
-        tickers = [str(ticker).strip() for ticker in tickers if ticker and str(ticker).strip()]
+        # Find where the actual data starts (look for "Ticker" header)
+        data_start = 0
+        for i, line in enumerate(lines):
+            if 'Ticker' in line:
+                data_start = i
+                break
 
-        self.logger.info(f"[SCRAPER] Russell 2000: {len(tickers)} tickers found")
-        # Return ticker list
+        if data_start == 0:
+            raise ValueError("Could not find ticker data in iShares CSV")
+
+        # Parse the CSV starting from the data rows
+        csv_data = '\n'.join(lines[data_start:])
+        df = pd.read_csv(StringIO(csv_data))
+
+        # Extract tickers from the Ticker column
+        tickers = df['Ticker'].dropna().tolist()
+
+        # Clean tickers - remove cash positions and invalid entries
+        tickers = [str(ticker).strip() for ticker in tickers
+                 if ticker and str(ticker).strip()
+                 and not str(ticker).startswith('CASH')
+                 and not str(ticker).startswith('USD')
+                 and len(str(ticker).strip()) <= 5]  # Most tickers are 1-5 chars
+
+        self.logger.info(f"[SCRAPER] Russell 3000: {len(tickers)} tickers found")
         return tickers
     
     def _scrape_nasdaq_tickers(self) -> List[str]:
@@ -311,13 +323,13 @@ class YfinancePipeline:
         # Return ticker list
         return tickers
     
-    def validate_tickers(self, tickers: List[str], test_days: int = 7) -> Dict[str, Any]:
+    def validate_tickers(self, tickers: List[str], test_days: int = 21) -> Dict[str, Any]:
         """
         Validate tickers by attempting to download recent data
 
         Args:
             tickers: List of tickers to validate
-            test_days: Number of days of data to test (default 7)
+            test_days: Number of calendar days of data to test (default 21 days ~ 15 trading days)
 
         Returns:
             Dict with 'valid' and 'invalid' ticker lists
@@ -350,12 +362,16 @@ class YfinancePipeline:
                     auto_adjust=True  # Explicitly set to avoid warning
                 )
 
-                # Check if we got valid data
-                if data is not None and not data.empty and len(data) > 0:
-                    self.logger.debug(f"[VALIDATE] ✓ {ticker}")
+                # Check if we got valid data with minimum trading days
+                # For 21 calendar days, we expect at least 10 trading days (accounting for weekends/holidays)
+                min_trading_days = 10  # Minimum required trading days to be considered valid
+
+                if data is not None and not data.empty and len(data) >= min_trading_days:
+                    self.logger.debug(f"[VALIDATE] ✓ {ticker}: {len(data)} trading days")
                     valid_tickers.append(ticker)
                 else:
-                    self.logger.debug(f"[VALIDATE] ✗ {ticker}: no data")
+                    days_found = len(data) if data is not None and not data.empty else 0
+                    self.logger.debug(f"[VALIDATE] ✗ {ticker}: only {days_found}/{min_trading_days} trading days")
                     invalid_tickers.append(ticker)
 
             except Exception as e:
