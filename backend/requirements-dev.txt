@@ -6,6 +6,7 @@ psycopg2-binary
 sqlalchemy
 tqdm
 requests
+html5lib
 
 # Jupyter for development
 jupyter
