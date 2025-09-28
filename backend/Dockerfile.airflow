@@ -1,0 +1,7 @@
+FROM apache/airflow:2.8.1-python3.10
+
+# Copy requirements file specifically for Airflow
+COPY requirements-airflow.txt /tmp/requirements-airflow.txt
+
+# Install Python packages needed for your DAGs
+RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt

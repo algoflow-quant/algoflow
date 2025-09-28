@@ -40,7 +40,7 @@ class YfinancePipeline:
         # Track field availability stats
         field_counts = {}
 
-        for ticker in tqdm(tickers[0:400], desc="Scraping metadata"):
+        for ticker in tqdm(tickers, desc="Scraping metadata"):
             try:
                 self.logger.debug(f"[METADATA] Fetching: {ticker}")
                 stock = yf.Ticker(ticker)
