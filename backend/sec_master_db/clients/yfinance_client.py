@@ -293,7 +293,7 @@ class YfinanceClient:
             
         
     
-    def insert_metadata(self, ticker: str, metadata: Dict):
+    def insert_metadata(self, ticker: str, metadata: Dict) -> Dict[str, Any]:
         """
         Insert comprehensive financial metadata for a ticker.
 
