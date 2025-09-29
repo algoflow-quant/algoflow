@@ -1,21 +1,35 @@
-"""
-YFinance Historical Data DAG
-Download historical data with configurable date range (default: 10 years)
-"""
+# Native python modules
+from datetime import datetime, timedelta, date
+from typing import List, DefaultDict
+from collections import defaultdict
+import math
+import sys
+sys.path.append('/opt/airflow/plugins') # add plugins to path (airflow plugins)
+
+# Airflow modules(type ignore due to incompatible version for now, works on airflow but not python 3.12)
 from airflow.decorators import dag, task  # type: ignore
 from airflow.models.param import Param  # type: ignore
-from datetime import datetime, timedelta, date
 
-# Import your modules
-import sys
-sys.path.append('/opt/airflow/plugins')
-from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline  # type: ignore
-from sec_master_db.clients.yfinance_client import YfinanceClient  # type: ignore 
-from utils.logger import get_logger  # type: ignore
+# Custom python modules
+from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline
+from sec_master_db.clients.yfinance_client import YfinanceClient 
+from utils.database import get_database_url
 
-logger = get_logger(__name__)
+# import loguru
+from loguru import logger
 
+# Helper function for get_tickers {ticker, groupings}
+def add_tickers_to_groupings(tickers: List[str], group_name: str, ticker_groupings: DefaultDict[str, List[str]]) -> int:
+      """Add tickers to groupings dict with their source."""
+      
+      # Default dict creates missing key with a default value when you try to accesss it
+      for ticker in tickers:
+          ticker_groupings[ticker].append(group_name)
+      return len(tickers)
+  
+  
 @dag(
+    # Airflow docs outline how to set up arguments in the dag decorator
     dag_id='yfinance_historical',
     description='Download historical stock data with date range',
     schedule_interval=None,  # Manual trigger via UI
@@ -56,67 +70,68 @@ def yfinance_historical():
     @task
     def get_tickers(**context):
         """Get tickers based on source selection with grouping information"""
-        # Get parameters from context
+        
+        # Get parameters from context(context is how airflow passes stuff from user to task)
         source = context['params']['ticker_source']
-        limit = int(context['params']['ticker_limit'])
+        limit = context['params']['ticker_limit']
 
         logger.info(f"Getting tickers from source: {source}")
 
+        # Instantiate a yfpipline
         pipeline = YfinancePipeline()
 
-        # Dictionary to track which groupings each ticker belongs to
-        ticker_groupings = {}
+        # Map source names to their scraper methods in pipeline
+        TICKER_SOURCES = {
+            'sp500': pipeline._scrape_sp500_tickers,
+            'russell3000': pipeline._scrape_russell3000_tickers,
+            'nasdaq': pipeline._scrape_nasdaq_tickers,
+        }
+        
+        # ticker.keys if all (keys is all the indexes) or else the individual function
+        sources_to_process = TICKER_SOURCES.keys() if source == 'all' else [source]
 
-        if source in ['sp500', 'all']:
-            sp500 = pipeline._scrape_sp500_tickers()
-            for ticker in sp500:
-                if ticker not in ticker_groupings:
-                    ticker_groupings[ticker] = []
-                ticker_groupings[ticker].append('sp500')
-            logger.info(f"Got {len(sp500)} S&P 500 tickers")
-
-        if source in ['russell3000', 'all']:
-            russell = pipeline._scrape_russell3000_tickers()
-            for ticker in russell:
-                if ticker not in ticker_groupings:
-                    ticker_groupings[ticker] = []
-                ticker_groupings[ticker].append('russell3000')
-            logger.info(f"Got {len(russell)} Russell 3000 tickers")
-
-        if source in ['nasdaq', 'all']:
-            nasdaq = pipeline._scrape_nasdaq_tickers()
-            for ticker in nasdaq:
-                if ticker not in ticker_groupings:
-                    ticker_groupings[ticker] = []
-                ticker_groupings[ticker].append('nasdaq')
-            logger.info(f"Got {len(nasdaq)} NASDAQ tickers")
+        # Make the ticker groupings dict format
+        ticker_groupings = defaultdict(list)
+        
+        # Process each source
+        for src in sources_to_process:
+            if src in TICKER_SOURCES: # check if exists
+                scraper_func = TICKER_SOURCES[src] # Extract the function by passing the key
+                tickers = scraper_func()  # Call the function
+                count = add_tickers_to_groupings(tickers, src, ticker_groupings) # Add the tickers to ticker groupings
+                logger.info(f"Got {count} {src.upper()} tickers")
 
         # Apply limit if specified
         if limit > 0:
             # Get first N tickers from the dictionary
-            limited_tickers = dict(list(ticker_groupings.items())[:limit])
+            limited_tickers = dict(list(ticker_groupings.items())[:limit]) # Get ticker dict in a list and get up uuntil limit and make a dict again
             ticker_groupings = limited_tickers
             logger.info(f"Limited to {limit} tickers")
 
-        logger.info(f"Total tickers to process: {len(ticker_groupings)}")
+        logger.success(f"Total tickers scraped and ready to process: {len(ticker_groupings)}")
         return ticker_groupings
 
     @task
     def validate_tickers(ticker_groupings: dict):
         """Validate tickers with yfinance and preserve groupings"""
+        
         logger.info(f"Validating {len(ticker_groupings)} tickers...")
 
+        # Instantiate yfinance pipeline and get ticker list
         pipeline = YfinancePipeline()
         ticker_list = list(ticker_groupings.keys())
+        
+        # Call the validate tickers function from the pipeline
         validation_result = pipeline.validate_tickers(ticker_list)
 
         # Create a new dictionary with only valid tickers and their groupings
         valid_ticker_groupings = {}
         for ticker in validation_result['valid']:
+            # Make sure returned ticker matches whats passed in
             if ticker in ticker_groupings:
-                valid_ticker_groupings[ticker] = ticker_groupings[ticker]
+                valid_ticker_groupings[ticker] = ticker_groupings[ticker] # make the dict of {ticker, list[str]}
 
-        logger.info(f"Valid: {len(valid_ticker_groupings)}, "
+        logger.success(f"Valid: {len(valid_ticker_groupings)}, "
                     f"Invalid: {len(validation_result['invalid'])}")
 
         # Log invalid tickers if not too many
@@ -128,27 +143,29 @@ def yfinance_historical():
     @task
     def register_tickers(ticker_groupings: dict):
         """Register tickers in securities table with groupings"""
+        
+        # return if ticker groupings is empty
         if not ticker_groupings:
+            logger.warning("ticker grouping is missing from register tickers task as argument")
             return ticker_groupings
 
         logger.info(f"Registering {len(ticker_groupings)} tickers in database")
 
         # Use environment variable for database connection
-        import os
-        db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev')
-        client = YfinanceClient(db_url)
+        client = YfinanceClient(get_database_url())
 
         # Register each ticker with its specific groupings
         try:
             success_count = 0
-            for ticker, groupings in ticker_groupings.items():
-                result = client.insert_securities([ticker], groupings)
+            for ticker, groupings in ticker_groupings.items(): # get ticker and grouping in an iterator that returns (ticker, grouping)
+                result = client.insert_securities([ticker], groupings) # use insert security method
                 if result['success']:
+                    logger.debug(f"Successfully inserted ticker: {ticker}")
                     success_count += 1
                 else:
                     logger.warning(f"Failed to register {ticker}")
 
-            logger.info(f"Registered {success_count}/{len(ticker_groupings)} tickers")
+            logger.success(f"Registered {success_count}/{len(ticker_groupings)} tickers")
 
         except Exception as e:
             logger.error(f"Failed to register tickers: {e}")
@@ -158,21 +175,23 @@ def yfinance_historical():
     @task
     def download_historical_data(ticker_groupings: dict, **context):
         """Download historical OHLCV data"""
+        
         # Get parameter from context
-        years_back = int(context['params']['years_back'])
+        years_back = context['params']['years_back']
 
+        # If the ticker groupings is empty
         if not ticker_groupings:
             logger.warning("No valid tickers to process")
             return {'success': 0, 'failed': 0}
 
+        # Get ticker list from groupings
         tickers = list(ticker_groupings.keys())
         logger.info(f"Downloading {years_back} years of data for {len(tickers)} tickers")
 
         pipeline = YfinancePipeline()
+        
         # Use environment variable for database connection
-        import os
-        db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev')
-        client = YfinanceClient(db_url)
+        client = YfinanceClient(get_database_url())
 
         # Calculate date range
         end_date = date.today()
@@ -180,16 +199,16 @@ def yfinance_historical():
 
         logger.info(f"Date range: {start_date} to {end_date}")
 
-        # Process in batches to minimize memory usage (important for historical data!)
+        # Process in batches to minimize memory usage (important for historical data)
         batch_size = 50  # Smaller batches for historical data (10 years per ticker = ~2500 rows each)
         success_count = 0
         failed_count = 0
 
         # Split tickers into batches
-        for i in range(0, len(tickers), batch_size):
-            batch = tickers[i:i + batch_size]
-            batch_num = (i // batch_size) + 1
-            total_batches = (len(tickers) + batch_size - 1) // batch_size
+        for i in range(0, len(tickers), batch_size): # 0 to ticker length step by batch size(50)
+            batch = tickers[i:i + batch_size] # Get ticker batch
+            batch_num = (i // batch_size) + 1 # Get the current iteration (calculated from i)
+            total_batches = math.ceil(len(tickers) / batch_size) # Get the total number of batches
 
             logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} tickers)")
 
@@ -203,43 +222,53 @@ def yfinance_historical():
 
             # Insert into database for this batch
             for ticker, df in ohlcv_data.items():
-                if df is not None and not df.empty:
+                if df is not None and not df.empty: # Check if not none and the data isnt empty
                     try:
                         result = client.insert_ohlcv(ticker, df)
-                        if result.get('success'): # type: ignore
+                        
+                        # If insertion went through with no error
+                        if result.get('success'):
+                            logger.debug(f"Successfully inserted historical data for ticker: {ticker}")
                             success_count += 1
                         else:
+                            # Insertion went through but came back with error
                             failed_count += 1
-                            logger.error(f"Failed to insert {ticker}: {result.get('error')}") # type: ignore
+                            logger.error(f"Failed to insert {ticker}: {result.get('error')}")
+                    
+                    # Catch python level error
                     except Exception as e:
                         failed_count += 1
                         logger.error(f"Error inserting {ticker}: {str(e)}")
+                # Or no data was returned
                 else:
                     failed_count += 1
                     logger.warning(f"No data for {ticker}")
 
-            # Clear the batch data from memory
-            del ohlcv_data
             logger.info(f"Batch {batch_num} complete: {success_count} success, {failed_count} failed so far")
 
-        logger.info(f"OHLCV complete: {success_count} success, {failed_count} failed")
+        logger.success(f"OHLCV complete: {success_count} success, {failed_count} failed")
+        
+        # Return basic success metrics
         return {'success': success_count, 'failed': failed_count}
 
     @task
     def download_metadata(ticker_groupings: dict):
         """Download fundamental metadata in batches"""
+        
+        # If ticker groupings is empty
         if not ticker_groupings:
             logger.warning("No valid tickers to process")
             return {'success': 0, 'failed': 0}
 
+        # Get ticker list
         tickers = list(ticker_groupings.keys())
         logger.info(f"Downloading metadata for {len(tickers)} tickers")
 
+        # Make a yfpipeline
         pipeline = YfinancePipeline()
+        
         # Use environment variable for database connection
-        import os
-        db_url = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev')
-        client = YfinanceClient(db_url)
+        client = YfinanceClient(get_database_url())
 
         # Process in batches to minimize memory usage
         batch_size = 100  # Larger batches for metadata since it's less data per ticker than OHLCV
@@ -247,10 +276,10 @@ def yfinance_historical():
         failed_count = 0
 
         # Split tickers into batches
-        for i in range(0, len(tickers), batch_size):
-            batch = tickers[i:i + batch_size]
-            batch_num = (i // batch_size) + 1
-            total_batches = (len(tickers) + batch_size - 1) // batch_size
+        for i in range(0, len(tickers), batch_size): # 0 to len(tickers) incrementing by 100
+            batch = tickers[i:i + batch_size] # Get ticker batch
+            batch_num = (i // batch_size) + 1 # Current batch num
+            total_batches = math.ceil(len(tickers) / batch_size) # Total batches using ceiling division
 
             logger.info(f"Processing metadata batch {batch_num}/{total_batches} ({len(batch)} tickers)")
 
@@ -260,12 +289,21 @@ def yfinance_historical():
             # Insert into database for this batch
             for ticker, metadata in metadata_dict.items():
                 try:
+                    
+                    # Insert metadata
                     result = client.insert_metadata(ticker, metadata)
+                    
+                    # DB insert success
                     if result.get('success'):
+                        logger.debug(f"Successfully inserted ticker: {ticker}")
                         success_count += 1
+                        
+                    # DB insert failure
                     else:
                         failed_count += 1
                         logger.error(f"Failed to insert metadata for {ticker}")
+                        
+                # Python level error
                 except Exception as e:
                     failed_count += 1
                     logger.error(f"Error inserting metadata for {ticker}: {str(e)}")
@@ -274,7 +312,9 @@ def yfinance_historical():
             del metadata_dict
             logger.info(f"Metadata batch {batch_num} complete: {success_count} success, {failed_count} failed so far")
 
-        logger.info(f"Metadata complete: {success_count} success, {failed_count} failed")
+        logger.success(f"Metadata complete: {success_count} success, {failed_count} failed")
+        
+        # Return success and fail count
         return {'success': success_count, 'failed': failed_count}
 
     @task
