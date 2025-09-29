@@ -541,7 +541,7 @@ class YfinanceClient:
         finally:
             session.close()
 
-    def insert_multiple_ohlcv(self, ohlcv_data: Dict[str, pd.DataFrame], update_metadata: bool = True) -> Dict[str, bool]:
+    def insert_multiple_ohlcv(self, ohlcv_data: Dict[str, pd.DataFrame]) -> Dict[str, bool]:
         """
         Bulk insert OHLCV data for multiple tickers with progress tracking.
 
@@ -578,12 +578,6 @@ class YfinanceClient:
                 ohlcv_result = self.insert_ohlcv(ticker, df)
                 if not ohlcv_result['success']:
                     raise Exception(ohlcv_result['message'])
-
-                # Update security metadata if requested
-                if update_metadata:
-                    meta_result = self.update_security_metadata(ticker)
-                    if not meta_result['success']:
-                        self.logger.warning(f"[DB-BULK] Metadata update failed {ticker}: {meta_result['message'][:50]}")
 
                 results[ticker] = True
                 self.logger.debug(f"[DB-BULK] ✓ {ticker}")
