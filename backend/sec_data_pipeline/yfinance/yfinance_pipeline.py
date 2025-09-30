@@ -1,20 +1,26 @@
+# Native python modules
 from typing import List, Dict, Any
 from datetime import datetime, date, timedelta
 import pandas as pd
 import yfinance as yf
-from utils.logger import get_logger
 from tqdm import tqdm
 import requests
 import logging
 
+# 3rd party libraries
+from loguru import logger
+
 class YfinancePipeline:
     """
     Main data pipeline with date range and incremental scraping
+    - Atomic methods (should be bareboned & simple)
+    - No retry logic & debug logging only (maybe error log) NO INFO LOGS!
+    - Each method should download data for one stock (airflow handles parallel execution)
     """
     
     def __init__(self):
-        # Set logger
-        self.logger = get_logger(__name__)
+        # Set Loguru logger
+        self.logger = logger
         
 
     def scrape_metadata(self, tickers: List[str]) -> Dict[str, Dict[str, Any]]:
