@@ -1,7 +1,16 @@
 FROM apache/airflow:2.8.1-python3.10
 
+USER root
+# Install PostgreSQL client for database creation
+RUN apt-get update
+
+RUN apt-get install -y postgresql-client
+
+RUN apt-get clean
+
+USER airflow
 # Copy requirements file specifically for Airflow
 COPY requirements-airflow.txt /tmp/requirements-airflow.txt
 
-# Install Python packages needed for your DAGs
+# Install Python packages needed for DAGs
 RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt
