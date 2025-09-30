@@ -126,90 +126,6 @@ class YfinanceClient:
             return None
         finally:
             session.close()
-      
-    def update_security_metadata(self, ticker: str, start_date: Optional[date] = None, end_date: Optional[date] = None, bar_count: Optional[int] = None):
-        """
-        Update security's data range and bar count in the securities table.
-
-        Args:
-            ticker: Ticker symbol to update
-            start_date: Earliest date of available data (auto-calculated if None)
-            end_date: Latest date of available data (auto-calculated if None)
-            bar_count: Number of OHLCV data points (auto-calculated if None)
-
-        Returns:
-            dict: {'success': bool, 'ticker': str, 'message': str}
-
-        Raises:
-            Exception: If ticker not found or update fails
-
-        Example:
-            # Auto-calculate from OHLCV data
-            client.update_security_metadata('AAPL')
-
-            # Or specify manually
-            client.update_security_metadata('AAPL', date(2020, 1, 1), date(2024, 12, 31), 1000)
-
-        Note:
-            If dates/count not provided, queries OHLCV table to calculate them.
-        """
-        session = self.Session()
-
-        try:
-            # Get security_id
-            security_id = self.get_security_id(ticker)
-
-            if not security_id:
-                self.logger.warning(f"[DB-QUERY] Security not found: {ticker}")
-                return {'success': False, 'ticker': ticker, 'message': f"Security {ticker} not found"}
-
-            # If dates not provided, calculate from OHLCV table
-            if not start_date or not end_date or bar_count is None:
-                # Query to get min date, max date, and count from OHLCV
-                stats_query = text("""
-                    SELECT
-                        MIN(date) as start_date,
-                        MAX(date) as end_date,
-                        COUNT(*) as bar_count
-                    FROM yfinance.ohlcv_data
-                    WHERE security_id = :security_id
-                """)
-
-                result = session.execute(stats_query, {'security_id': security_id})
-                row = result.fetchone()
-
-                if row:
-                    start_date = start_date or row[0]
-                    end_date = end_date or row[1]
-                    bar_count = bar_count if bar_count is not None else row[2]
-
-            # Update the securities table
-            update_query = text("""
-                UPDATE security_master.securities
-                SET
-                    start_data = :start_date,
-                    end_data = :end_date,
-                    bar_count = :bar_count
-                WHERE security_id = :security_id
-            """)
-
-            session.execute(update_query, {
-                'security_id': security_id,
-                'start_date': start_date,
-                'end_date': end_date,
-                'bar_count': bar_count
-            })
-
-            session.commit()
-            self.logger.info(f"[DB-UPDATE] {ticker}: {bar_count} bars | {start_date} to {end_date}")
-            return {'success': True, 'ticker': ticker, 'message': f"Updated {ticker}: {bar_count} bars"}
-
-        except Exception as e:
-            session.rollback()
-            self.logger.error(f"[DB-UPDATE] Failed {ticker}: {str(e)[:100]}")
-            return {'success': False, 'ticker': ticker, 'message': str(e)}
-        finally:
-            session.close()
     
     # Yfinance Schema storage
     def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> Dict[str, Any]:
@@ -541,7 +457,7 @@ class YfinanceClient:
         finally:
             session.close()
 
-    def insert_multiple_ohlcv(self, ohlcv_data: Dict[str, pd.DataFrame], update_metadata: bool = True) -> Dict[str, bool]:
+    def insert_multiple_ohlcv(self, ohlcv_data: Dict[str, pd.DataFrame]) -> Dict[str, bool]:
         """
         Bulk insert OHLCV data for multiple tickers with progress tracking.
 
@@ -578,12 +494,6 @@ class YfinanceClient:
                 ohlcv_result = self.insert_ohlcv(ticker, df)
                 if not ohlcv_result['success']:
                     raise Exception(ohlcv_result['message'])
-
-                # Update security metadata if requested
-                if update_metadata:
-                    meta_result = self.update_security_metadata(ticker)
-                    if not meta_result['success']:
-                        self.logger.warning(f"[DB-BULK] Metadata update failed {ticker}: {meta_result['message'][:50]}")
 
                 results[ticker] = True
                 self.logger.debug(f"[DB-BULK] ✓ {ticker}")
