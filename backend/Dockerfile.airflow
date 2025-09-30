@@ -12,5 +12,5 @@ USER airflow
 # Copy requirements file specifically for Airflow
 COPY requirements-airflow.txt /tmp/requirements-airflow.txt
 
-# Install Python packages needed for your DAGs
+# Install Python packages needed for DAGs
 RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt
