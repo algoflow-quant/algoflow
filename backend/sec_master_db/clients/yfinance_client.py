@@ -1,13 +1,19 @@
-import os
+# Native python modules
+from datetime import date
+from typing import Optional, List, Dict, Any
+
+# Sqalchemy imports
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from utils.logger import get_logger
-from typing import Optional, List, Dict, Any
+
+# Use raw psycopg2 execute_values for 10-100x speed improvement
+from psycopg2.extras import execute_values
+
+# Pandas dataframe manipulation
 import pandas as pd
-from datetime import date
 
 class YfinanceClient:
-    def __init__(self, db_url: Optional[str] = None):
+    def __init__(self, db_url: str):
         """
         Initialize YfinanceClient for database operations.
 
@@ -18,69 +24,74 @@ class YfinanceClient:
         Example:
             client = YfinanceClient("postgresql://user:pass@localhost:5432/sec_master_dev")
         """
-        self.db_url = db_url or os.getenv(
-              'SEC_MASTER_DB_URL_PROD',
-              'postgresql://user:pass@localhost/sec_master_dev'  # Dev default
-          )
         # Set up connection
-        self.engine = create_engine(self.db_url)
+        self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
-        
-        # Logger
-        self.logger = get_logger(__name__)
         
         
     # Security management methods    
-    def insert_securities(self, tickers: List[str], groupings: List[str], provider: str = 'yfinance'):
+    def insert_security(self, ticker: str, groupings: List[str], provider: str = 'yfinance'):
         """
-        Insert multiple ticker symbols into the security_master.securities table.
+        Insert a ticker symbol into the security_master.securities table.
 
         Args:
-            tickers: List of ticker symbols (e.g., ['AAPL', 'MSFT', 'GOOGL'])
+            ticker: Ticker symbol (e.g., 'AAPL')
             groupings: List of grouping tags (e.g., ['sp500', 'tech', 'large-cap'])
             provider: Data provider name (default: 'yfinance')
 
         Returns:
-            dict: {'success': bool, 'count': int, 'message': str}
+            dict: {
+                'success': bool,
+                'ticker': str,
+                'rows_affected': int,
+                'message': str
+            }
 
         Raises:
             Exception: If database insertion fails
 
         Example:
-            client.insert_securities(['AAPL', 'MSFT'], ['sp500', 'nasdaq'])
+            result = client.insert_security('AAPL', ['sp500', 'nasdaq'])
+            if result['rows_affected'] > 0:
+                print("Inserted successfully")
 
         Note:
-            Uses ON CONFLICT DO NOTHING, so duplicate tickers are silently skipped.
+            Uses ON CONFLICT DO NOTHING, so duplicate tickers return rowcount=0.
         """
-        
+
         session = self.Session()
-        
+
         try:
-            # Use PostgreSQL's UNNEST to insert multiple rows
+
+            # Insert a security
             query = text("""
                 INSERT INTO security_master.securities (ticker, provider, groupings, created_at)
-                SELECT 
-                    ticker,
-                    :provider as provider,
-                    :groupings as groupings,  -- This will be the array
-                    NOW() as created_at
-                FROM UNNEST(:tickers ::text[]) as ticker
-                ON CONFLICT (ticker, provider) 
+                VALUES (:ticker, :provider, :groupings, NOW())
+                ON CONFLICT (ticker, provider)
                 DO NOTHING
             """)
-            
+
             # Execute query
-            session.execute(query, {'provider': provider, 'groupings': groupings, 'tickers': tickers})
+            result = session.execute(query, {'ticker': ticker, 'provider': provider, 'groupings': groupings})
+            
+            # Get the number of affected rows
+            rows = getattr(result, 'rowcount', 0)
             
             # Commit saves DB changes
             session.commit()
-            self.logger.info(f"[DB-INSERT] Securities: {len(tickers)} tickers added")
-            return {'success': True, 'count': len(tickers), 'message': f"Inserted {len(tickers)} tickers"}
 
-        except Exception as e:
+            # Return a formatted summary dict
+            return {
+                'success': True,
+                'ticker': ticker,
+                'rows_affected': rows,
+                'message': f"Inserted {ticker}" if rows > 0 else f"{ticker} already exists"
+            }
+
+        # Catch Error
+        except Exception:
             session.rollback()  # Important: rollback on error so we dont commit partial data
-            self.logger.error(f"[DB-INSERT] Securities failed: {str(e)[:100]}")
-            return {'success': False, 'count': 0, 'message': str(e)}
+            raise
         finally:
             session.close()
     
@@ -119,16 +130,17 @@ class YfinanceClient:
             row = result.fetchone()
             
             # Return the security id
-            return row[0] if row else None
+            if not row:
+                raise ValueError("Sql return for get_security_id was empty")
+            return row[0]
         
-        except Exception as e:
-            self.logger.error(f"[DB-QUERY] Failed to get ID for {ticker}: {str(e)[:100]}")
-            return None
+        except Exception:
+            raise
         finally:
             session.close()
     
     # Yfinance Schema storage
-    def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> Dict[str, Any]:
+    def insert_ohlcv(self, ticker: str, data: pd.DataFrame):
         """
         Insert OHLCV (Open, High, Low, Close, Volume) data for a single ticker.
 
@@ -138,7 +150,12 @@ class YfinanceClient:
                   Date can be either index or column.
 
         Returns:
-            dict: {'success': bool, 'ticker': str, 'count': int, 'message': str}
+            dict: {
+                'success': bool,
+                'ticker': str,
+                'rows_affected': int,
+                'message': str
+            }
 
         Raises:
             Exception: If ticker not found or insertion fails
@@ -146,7 +163,8 @@ class YfinanceClient:
         Example:
             import yfinance as yf
             df = yf.download('AAPL', start='2024-01-01', end='2024-12-31')
-            client.insert_ohlcv('AAPL', df)
+            result = client.insert_ohlcv('AAPL', df)
+            print(f"Inserted/updated {result['rows_affected']} rows")
 
         Note:
             Uses ON CONFLICT UPDATE to handle duplicate dates (updates existing records).
@@ -155,13 +173,8 @@ class YfinanceClient:
         session = self.Session()
 
         try:
-            # Get security id
+            # Get security id 
             security_id = self.get_security_id(ticker)
-
-            if not security_id:
-                # Ticker not found
-                self.logger.warning(f"[DB-INSERT] OHLCV skipped - {ticker} not in database")
-                return {'success': False, 'ticker': ticker, 'count': 0, 'message': f"Security {ticker} not found"}
 
             # Prepare data as tuples for maximum performance
             records = data.reset_index()
@@ -179,9 +192,6 @@ class YfinanceClient:
                 )
                 for _, row in records.iterrows()
             ]
-
-            # Use raw psycopg2 execute_values for 10-100x speed improvement
-            from psycopg2.extras import execute_values
 
             # Get the raw connection from SQLAlchemy session
             raw_conn = session.connection().connection
@@ -207,23 +217,35 @@ class YfinanceClient:
                 page_size=1000  # Process 1000 rows at a time
             )
 
+            # Get rows affected from cursor
+            rows = cursor.rowcount # row update/insert count
+
             # Commit the changes
             raw_conn.commit()
             cursor.close()
-            self.logger.info(f"[DB-INSERT] OHLCV {ticker}: {len(records)} records")
-            return {'success': True, 'ticker': ticker, 'count': len(records), 'message': f"Inserted {len(records)} records"}
+            return {
+                'success': True,
+                'ticker': ticker,
+                'rows_affected': rows,
+                'message': f"Insert OHLCV for {ticker}" if rows > 0 else f"{ticker} already in OHLCV DB"
+            }
 
-        except Exception as e:
+        except Exception:
+            # Rollback both the raw connection and session
+            try:
+                raw_conn.rollback()
+            except:
+                pass
             session.rollback()
-            self.logger.error(f"[DB-INSERT] OHLCV failed {ticker}: {str(e)[:100]}")
-            return {'success': False, 'ticker': ticker, 'count': 0, 'message': str(e)}
+            raise
+
         finally:
             session.close()
             
             
         
     
-    def insert_metadata(self, ticker: str, metadata: Dict) -> Dict[str, Any]:
+    def insert_metadata(self, ticker: str, metadata: Dict):
         """
         Insert comprehensive financial metadata for a ticker.
 
@@ -237,14 +259,20 @@ class YfinanceClient:
                      - And many more (see schema for full list)
 
         Returns:
-            dict: {'success': bool, 'ticker': str, 'message': str}
+            dict: {
+                'success': bool,
+                'ticker': str,
+                'rows_affected': int,
+                'message': str
+            }
 
         Raises:
             Exception: If ticker not found or insertion fails
 
         Example:
             metadata = pipeline.scrape_metadata(['AAPL'])
-            client.insert_metadata('AAPL', metadata['AAPL'])
+            result = client.insert_metadata('AAPL', metadata['AAPL'])
+            print(f"Rows affected: {result['rows_affected']}")
 
         Note:
             Missing keys are stored as NULL. Uses ON CONFLICT UPDATE for existing records.
@@ -256,8 +284,7 @@ class YfinanceClient:
             security_id = self.get_security_id(ticker)
 
             if not security_id:
-                self.logger.warning(f"[DB-INSERT] OHLCV skipped - {ticker} not in database")
-                return {'success': False, 'ticker': ticker, 'message': f"Security {ticker} not found"}
+                raise Exception(f"No security id for ticker: {ticker}")
 
             # Build the INSERT query with all columns
             query = text("""
@@ -445,69 +472,24 @@ class YfinanceClient:
             }
 
             # Execute the query
-            session.execute(query, params)
-            session.commit()
-            self.logger.info(f"[DB-INSERT] Metadata: {ticker} stored")
-            return {'success': True, 'ticker': ticker, 'message': f"Inserted metadata for {ticker}"}
+            result = session.execute(query, params)
 
-        except Exception as e:
+            # Get the number of affected rows
+            rows = getattr(result, 'rowcount', 0)
+            
+            session.commit()
+            return {
+                'success': True,
+                'ticker': ticker,
+                'rows_affected': rows,
+                'message': f"Inserted metadata for {ticker}" if rows > 0 else f"{ticker} already exists in metadata DB"
+            }
+
+        except Exception:
             session.rollback()
-            self.logger.error(f"[DB-INSERT] Metadata failed {ticker}: {str(e)[:100]}")
-            return {'success': False, 'ticker': ticker, 'message': str(e)}
+            raise
         finally:
             session.close()
-
-    def insert_multiple_ohlcv(self, ohlcv_data: Dict[str, pd.DataFrame]) -> Dict[str, bool]:
-        """
-        Bulk insert OHLCV data for multiple tickers with progress tracking.
-
-        Args:
-            ohlcv_data: Dictionary mapping ticker symbols to their OHLCV DataFrames
-                       Format: {'AAPL': df1, 'MSFT': df2, ...}
-            update_metadata: If True, updates each security's date range and bar count
-
-        Returns:
-            Dictionary mapping each ticker to success status (True/False)
-            Format: {'AAPL': True, 'MSFT': True, 'INVALID': False}
-
-        Example:
-            # Download and store data for multiple tickers
-            ohlcv_data = pipeline.scrape_date_range(['AAPL', 'MSFT'], start_date, end_date)
-            results = client.insert_multiple_ohlcv(ohlcv_data)
-
-            # Check results
-            failed = [t for t, success in results.items() if not success]
-            print(f"Failed tickers: {failed}")
-
-        Note:
-            Continues processing even if individual tickers fail.
-            Logs progress and provides detailed error messages.
-        """
-        self.logger.info(f"[DB-BULK] Starting OHLCV insert: {len(ohlcv_data)} tickers")
-        results = {}
-
-        for ticker, df in ohlcv_data.items():
-            try:
-                self.logger.debug(f"[DB-BULK] Processing {ticker}: {len(df)} records")
-
-                # Insert OHLCV data using existing method
-                ohlcv_result = self.insert_ohlcv(ticker, df)
-                if not ohlcv_result['success']:
-                    raise Exception(ohlcv_result['message'])
-
-                results[ticker] = True
-                self.logger.debug(f"[DB-BULK] ✓ {ticker}")
-
-            except Exception as e:
-                self.logger.error(f"[DB-BULK] ✗ {ticker}: {str(e)[:100]}")
-                results[ticker] = False
-                continue
-
-        # Log summary
-        success_count = sum(1 for v in results.values() if v)
-        self.logger.info(f"[DB-BULK] Complete: {success_count}/{len(ohlcv_data)} success")
-
-        return results
 
     def get_tickers(self, groupings: Optional[List[str]] = None, provider: str = 'yfinance') -> List[str]:
         """
@@ -535,9 +517,8 @@ class YfinanceClient:
 
         try:
             if groupings:
-                # Get tickers that have ANY of the specified groupings
-                self.logger.info(f"[DB-QUERY] Fetching tickers: groups={groupings}")
 
+                # Get tickers that have ANY of the specified groupings
                 query = text("""
                     SELECT DISTINCT ticker
                     FROM security_master.securities
@@ -551,9 +532,8 @@ class YfinanceClient:
                     'groupings_array': groupings
                 })
             else:
-                # Get all tickers for the provider
-                self.logger.info(f"[DB-QUERY] Fetching all {provider} tickers")
 
+                # Select all
                 query = text("""
                     SELECT ticker
                     FROM security_master.securities
@@ -563,13 +543,11 @@ class YfinanceClient:
 
                 result = session.execute(query, {'provider': provider})
 
+            # Fetch tickers from result
             tickers = [row[0] for row in result.fetchall()]
-            self.logger.info(f"[DB-QUERY] Found {len(tickers)} tickers")
-
             return tickers
 
-        except Exception as e:
-            self.logger.error(f"[DB-QUERY] Failed to fetch tickers: {str(e)[:100]}")
+        except Exception:
             raise
         finally:
             session.close()
