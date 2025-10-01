@@ -3,6 +3,7 @@ services:
   postgres:
     image: timescale/timescaledb:latest-pg15
     container_name: algoflow_sec_master_postgres
+    command: postgres -c max_locks_per_transaction=256 -c shared_buffers=256MB
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -58,7 +59,13 @@ services:
     depends_on:
       - postgres
     environment:
+      - AIRFLOW__CORE__MAX_MAP_LENGTH=6000
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__PARALLELISM=32
+      - AIRFLOW__CORE__DAG_CONCURRENCY=16
+      - AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG=20
+      - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=1
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@postgres:5432/airflow
       - _AIRFLOW_DB_MIGRATE=true
       - _AIRFLOW_WWW_USER_CREATE=true
