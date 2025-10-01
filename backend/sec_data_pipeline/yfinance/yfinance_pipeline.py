@@ -1,249 +1,209 @@
+# type: ignore
+
+# Native python modules
 from typing import List, Dict, Any
 from datetime import datetime, date, timedelta
 import pandas as pd
 import yfinance as yf
-from utils.logger import get_logger
 from tqdm import tqdm
 import requests
 import logging
+from io import StringIO
+
+# Suppress yfinance output
+yf_logger = logging.getLogger('yfinance')
+yf_logger.disabled = True
+
+# Import great expectations for data quality
+import great_expectations as gx
 
 class YfinancePipeline:
     """
     Main data pipeline with date range and incremental scraping
+    - Atomic methods (should be bareboned & simple)
+    - No retry logic & debug logging only (maybe error log) NO INFO LOGS!
+    - Each method should download data for one stock (airflow handles parallel execution)
     """
     
-    def __init__(self):
-        # Set logger
-        self.logger = get_logger(__name__)
+    def __init__(self) -> None:
+
+        # Add headers to avoid 403 error (Forbidden, for ticker scraping)
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
         
-
-    def scrape_metadata(self, tickers: List[str]) -> Dict[str, Dict[str, Any]]:
-
+    def scrape_metadata(self, ticker: str) -> Dict[str, Any]:
         """
-        Scrape fundamental metadata for tickers
+        Scrape fundamental metadata for a single ticker
 
         Args:
-            tickers: List of ticker symbols
+            ticker: A string for the ticker
 
         Returns:
-            Dictionary mapping ticker to metadata dict
+            A dictionary with metadata about the ticker
         """
-        self.logger.info(f"[METADATA] Starting scrape for {len(tickers)} tickers")
 
-        metadata_dict = {}
-        failed_tickers = []
+        # Get the metadata from yfinance
+        stock = yf.Ticker(ticker)
+        info = stock.info
 
-        # Suppress yfinance output
-        yf_logger = logging.getLogger('yfinance')
-        yf_logger.disabled = True
+        # Calculate derived metrics
+        current_price = info.get('currentPrice') or info.get('regularMarketPrice')
+        target_price = info.get('targetMeanPrice')
+        target_upside = None
+        
+        # Calculate target upside
+        if target_price and current_price:
+            target_upside = (target_price - current_price) / current_price
 
-        # Track field availability stats
-        field_counts = {}
+        # Calculate free cash flow and fcf_yield
+        free_cash_flow = info.get('freeCashflow')
+        market_cap = info.get('marketCap')
+        fcf_yield = None
+        if free_cash_flow and market_cap:
+            fcf_yield = free_cash_flow / market_cap
 
-        for ticker in tqdm(tickers, desc="Scraping metadata"):
-            try:
-                self.logger.debug(f"[METADATA] Fetching: {ticker}")
-                stock = yf.Ticker(ticker)
-                info = stock.info
+        # Extract only high and medium availability fields (>50%)
+        metadata = {
+            'ticker': ticker,
+            'date_scraped': date.today(),
 
-                # Skip if no data returned
-                if not info or 'symbol' not in info:
-                    self.logger.warning(f"[METADATA] No data: {ticker}")
-                    failed_tickers.append(ticker)
-                    continue
+            # Company Basic Info (80%+ availability)
+            'company_name': info.get('longName'),
+            'exchange': info.get('exchange'),
+            'country': info.get('country'),
+            'sector': info.get('sector'),
+            'industry': info.get('industry'),
+            'market_cap': market_cap,
+            'enterprise_value': info.get('enterpriseValue'),
+            'shares_outstanding': info.get('sharesOutstanding'),
+            'float_shares': info.get('floatShares'),
 
-                # Calculate derived metrics
-                current_price = info.get('currentPrice') or info.get('regularMarketPrice')
-                target_price = info.get('targetMeanPrice')
-                target_upside = None
-                if target_price and current_price:
-                    target_upside = (target_price - current_price) / current_price
+            # Valuation Metrics (50%+ availability)
+            'price_to_book': info.get('priceToBook'),
+            'forward_pe': info.get('forwardPE'),
+            'ev_to_ebitda': info.get('enterpriseToEbitda'),
+            'ev_to_revenue': info.get('enterpriseToRevenue'),
+            'price_to_sales': info.get('priceToSalesTrailing12Months'),
 
-                free_cash_flow = info.get('freeCashflow')
-                market_cap = info.get('marketCap')
-                fcf_yield = None
-                if free_cash_flow and market_cap:
-                    fcf_yield = free_cash_flow / market_cap
+            # Profitability & Quality (75%+ availability)
+            'gross_margin': info.get('grossMargins'),
+            'operating_margin': info.get('operatingMargins'),
+            'profit_margin': info.get('profitMargins'),
+            'return_on_equity': info.get('returnOnEquity'),
+            'return_on_assets': info.get('returnOnAssets'),
+            'free_cash_flow_yield': fcf_yield,
 
-                # Extract only high and medium availability fields (>50%)
-                metadata = {
-                    'ticker': ticker,
-                    'date_scraped': date.today(),
+            # Growth Metrics (60%+ availability)
+            'revenue_growth_yoy': info.get('revenueGrowth'),
+            'revenue_per_share': info.get('revenuePerShare'),
 
-                    # Company Basic Info (80%+ availability)
-                    'company_name': info.get('longName'),
-                    'exchange': info.get('exchange'),
-                    'country': info.get('country'),
-                    'sector': info.get('sector'),
-                    'industry': info.get('industry'),
-                    'market_cap': market_cap,
-                    'enterprise_value': info.get('enterpriseValue'),
-                    'shares_outstanding': info.get('sharesOutstanding'),
-                    'float_shares': info.get('floatShares'),
+            # Financial Health (67%+ availability)
+            'debt_to_equity': info.get('debtToEquity'),
+            'current_ratio': info.get('currentRatio'),
+            'quick_ratio': info.get('quickRatio'),
+            'total_cash': info.get('totalCash'),
+            'total_debt': info.get('totalDebt'),
+            'total_cash_per_share': info.get('totalCashPerShare'),
+            'book_value': info.get('bookValue'),
 
-                    # Valuation Metrics (50%+ availability)
-                    'price_to_book': info.get('priceToBook'),
-                    'forward_pe': info.get('forwardPE'),
-                    'ev_to_ebitda': info.get('enterpriseToEbitda'),
-                    'ev_to_revenue': info.get('enterpriseToRevenue'),
-                    'price_to_sales': info.get('priceToSalesTrailing12Months'),
+            # Cash Flow (77%+ availability)
+            'operating_cash_flow': info.get('operatingCashflow'),
+            'free_cash_flow': free_cash_flow,
 
-                    # Profitability & Quality (75%+ availability)
-                    'gross_margin': info.get('grossMargins'),
-                    'operating_margin': info.get('operatingMargins'),
-                    'profit_margin': info.get('profitMargins'),
-                    'return_on_equity': info.get('returnOnEquity'),
-                    'return_on_assets': info.get('returnOnAssets'),
-                    'free_cash_flow_yield': fcf_yield,
+            # Dividends (81%+ availability)
+            'payout_ratio': info.get('payoutRatio'),
 
-                    # Growth Metrics (60%+ availability)
-                    'revenue_growth_yoy': info.get('revenueGrowth'),
-                    'revenue_per_share': info.get('revenuePerShare'),
+            # Short Interest & Ownership (80%+ availability)
+            'short_percent_of_float': info.get('shortPercentOfFloat'),
+            'short_ratio': info.get('shortRatio'),
+            'shares_short': info.get('sharesShort'),
+            'shares_percent_shares_out': info.get('sharesPercentSharesOut'),
+            'held_percent_institutions': info.get('heldPercentInstitutions'),
+            'held_percent_insiders': info.get('heldPercentInsiders'),
 
-                    # Financial Health (67%+ availability)
-                    'debt_to_equity': info.get('debtToEquity'),
-                    'current_ratio': info.get('currentRatio'),
-                    'quick_ratio': info.get('quickRatio'),
-                    'total_cash': info.get('totalCash'),
-                    'total_debt': info.get('totalDebt'),
-                    'total_cash_per_share': info.get('totalCashPerShare'),
-                    'book_value': info.get('bookValue'),
+            # Analyst Coverage (61%+ availability)
+            'target_mean_price': target_price,
+            'target_price_upside': target_upside,
+            'number_of_analysts': info.get('numberOfAnalystOpinions'),
+            'recommendation_key': info.get('recommendationKey'),
 
-                    # Cash Flow (77%+ availability)
-                    'operating_cash_flow': info.get('operatingCashflow'),
-                    'free_cash_flow': free_cash_flow,
+            # Market Performance (80%+ availability)
+            'beta': info.get('beta'),
+            '52_week_high': info.get('fiftyTwoWeekHigh'),
+            '52_week_low': info.get('fiftyTwoWeekLow'),
+            '52_week_change': info.get('52WeekChange'),
+            'sp500_52_week_change': info.get('SandP52WeekChange'),
+            '50_day_average': info.get('fiftyDayAverage'),
+            '200_day_average': info.get('twoHundredDayAverage'),
 
-                    # Dividends (81%+ availability)
-                    'payout_ratio': info.get('payoutRatio'),
+            # Trading Volume (100% availability)
+            'average_volume': info.get('averageVolume'),
+            'average_volume_10days': info.get('averageDailyVolume10Day'),
+            'regular_market_volume': info.get('regularMarketVolume'),
 
-                    # Short Interest & Ownership (80%+ availability)
-                    'short_percent_of_float': info.get('shortPercentOfFloat'),
-                    'short_ratio': info.get('shortRatio'),
-                    'shares_short': info.get('sharesShort'),
-                    'shares_percent_shares_out': info.get('sharesPercentSharesOut'),
-                    'held_percent_institutions': info.get('heldPercentInstitutions'),
-                    'held_percent_insiders': info.get('heldPercentInsiders'),
+            # Metadata
+            'last_updated': datetime.now(),
+            'data_source': 'yfinance'
+        }
 
-                    # Analyst Coverage (61%+ availability)
-                    'target_mean_price': target_price,
-                    'target_price_upside': target_upside,
-                    'number_of_analysts': info.get('numberOfAnalystOpinions'),
-                    'recommendation_key': info.get('recommendationKey'),
-
-                    # Market Performance (80%+ availability)
-                    'beta': info.get('beta'),
-                    '52_week_high': info.get('fiftyTwoWeekHigh'),
-                    '52_week_low': info.get('fiftyTwoWeekLow'),
-                    '52_week_change': info.get('52WeekChange'),
-                    'sp500_52_week_change': info.get('SandP52WeekChange'),
-                    '50_day_average': info.get('fiftyDayAverage'),
-                    '200_day_average': info.get('twoHundredDayAverage'),
-
-                    # Trading Volume (100% availability)
-                    'average_volume': info.get('averageVolume'),
-                    'average_volume_10days': info.get('averageDailyVolume10Day'),
-                    'regular_market_volume': info.get('regularMarketVolume'),
-
-                    # Metadata
-                    'last_updated': datetime.now(),
-                    'data_source': 'yfinance'
-                }
-
-                metadata_dict[ticker] = metadata
-
-                # Track which fields have values (for diagnostics)
-                for key, value in metadata.items():
-                    if key not in ['ticker', 'date_scraped', 'last_updated', 'data_source']:
-                        field_counts[key] = field_counts.get(key, 0) + (1 if value is not None else 0)
-
-            except Exception as e:
-                self.logger.error(f"[METADATA] Failed {ticker}: {str(e)[:100]}")
-                failed_tickers.append(ticker)
-                continue
-
-        self.logger.info(f"[METADATA] Complete: {len(metadata_dict)} success | {len(failed_tickers)} failed")
-        return metadata_dict
+        # Return metadata
+        return metadata
     
     def scrape_date_range(
         self,
-        tickers: List[str],
+        ticker: str,
         start_date: date,
         end_date: date,
         interval: str = '1d'
-    ) -> Dict[str, pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         """
-        Scrape historical data for a specific date range.
+        Scrape historical data for a specific date range for a single ticker
 
         Args:
-            tickers: List of ticker symbols
+            ticker: A single ticker symbol
             start_date: Start date
             end_date: End date
             interval: Data interval (1d only)
 
         Returns:
-            Dictionary mapping tickers to their OHLCV DataFrames (empty dict entry for failed tickers)
+            Returns a dataframe containing the ohlcv for a single stock
         """
-        data_dict = {}
-        failed_tickers = []
-        total = len(tickers)
-        self.logger.info(f"[OHLCV] Starting: {total} tickers | {start_date} to {end_date}")
-        
-        # Configure logger to supress yfinance output
-        yf_logger = logging.getLogger('yfinance')
-        yf_logger.disabled = True
-        
-        for i, ticker in tqdm(enumerate(tickers, 1), desc="Scraping tickers"):
-            try:
-                self.logger.debug(f"[OHLCV] Downloading: {ticker}")
-                # Download the data for a ticker
-                ticker_data = yf.download(
-                    ticker,
-                    start=start_date,
-                    end=end_date,
-                    interval=interval,
-                    progress=False, # Disable individual progress bars
-                    auto_adjust=True, # adjusted close prices (dividends & stock splits)
-                )
+      
+        # Download the data for a ticker
+        ticker_data = yf.download(
+            ticker,
+            start=start_date,
+            end=end_date,
+            interval=interval,
+            progress=False, # Disable individual progress bars
+            auto_adjust=True, # Adjusted close prices (dividends & stock splits)
+        )
 
-                # Check if data
-                if ticker_data is not None and not ticker_data.empty:
-                    # Flatten column names if they are MultiIndex (happens with single ticker)
-                    if isinstance(ticker_data.columns, pd.MultiIndex):
-                        ticker_data.columns = ticker_data.columns.droplevel(1)
+        if ticker_data is None:
+            raise ValueError("OHLCV data is None")
 
-                    self.logger.debug(f"[OHLCV] Success {ticker}: {len(ticker_data)} rows")
-                    data_dict[ticker] = ticker_data
-                    if i % 100 == 0:
-                        self.logger.info(f"[OHLCV] Progress: {i}/{total} done | {len(failed_tickers)} failed")
-                else:
-                    self.logger.warning(f"[OHLCV] No data: {ticker}")
-                    failed_tickers.append(ticker)
-            
-            except Exception as e:
-                self.logger.error(f"[OHLCV] Failed {ticker}: {str(e)[:100]}")
-                failed_tickers.append(ticker)
-                continue
+        # Flatten MultiIndex columns (yfinance returns MultiIndex for single ticker)
+        if isinstance(ticker_data.columns, pd.MultiIndex):
+            ticker_data.columns = ticker_data.columns.get_level_values(0)
 
-        self.logger.info(f"[OHLCV] Complete: {len(data_dict)} success | {len(failed_tickers)} failed")
-        if failed_tickers and len(failed_tickers) <= 10:
-            self.logger.warning(f"[OHLCV] Failed list: {failed_tickers}")
-
-        return data_dict
+        return ticker_data
     
-    def _scrape_sp500_tickers(self) -> List[str]:
-        """Scrapes S&P 500 tickers from Wikipedia"""
-        self.logger.info("[SCRAPER] Fetching S&P 500 tickers from Wikipedia")
+    def scrape_sp500_tickers(self) -> List[str]:
+        """
+        Scrapes S&P 500 tickers from Wikipedia
+        
+        Args:
+            None
+        
+        Returns:
+            A list of tickers from the S&P 500
+        """
+
         sp500_url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 
-        # Add headers to avoid 403 error
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-
         # Fetch the HTML with headers
-        self.logger.debug(f"[SCRAPER] GET {sp500_url}")
-        response = requests.get(sp500_url, headers=headers)
-        self.logger.debug(f"Response status: {response.status_code}")
+        response = requests.get(sp500_url, headers=self.headers)
 
         # Read the table from the HTML
         tables = pd.read_html(response.text)
@@ -254,27 +214,27 @@ class YfinancePipeline:
 
         # Clean tickers (replace dots with dashes for BRK.B -> BRK-B)
         tickers = [ticker.replace('.', '-') for ticker in tickers]
-        self.logger.info(f"[SCRAPER] S&P 500: {len(tickers)} tickers found")
+
         return tickers
     
-    def _scrape_russell3000_tickers(self) -> List[str]:
-        """Scrapes Russell 3000 tickers from iShares IWV ETF holdings"""
-        self.logger.info("[SCRAPER] Fetching Russell 3000 tickers from iShares IWV ETF")
+    def scrape_russell3000_tickers(self) -> List[str]:
+        """
+        Scrapes Russell 3000 tickers from iShares IWV ETF holdings
+        
+        Args:
+            None
+            
+        Returns:
+            A list of tickers from the russell 3000 index   
+        """
 
         # IWV is the iShares Russell 3000 ETF - direct CSV download URL
         csv_url = "https://www.ishares.com/us/products/239714/ishares-russell-3000-etf/1467271812596.ajax?fileType=csv&fileName=IWV_holdings&dataType=fund"
 
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-
-        response = requests.get(csv_url, headers=headers)
-
-        if response.status_code != 200:
-            raise ValueError(f"Failed to download Russell 3000 data from iShares: Status {response.status_code}")
+        # Request the csv
+        response = requests.get(csv_url, headers=self.headers)
 
         # Parse CSV - iShares CSV has metadata in first ~10 rows
-        from io import StringIO
         lines = response.text.split('\n')
 
         # Find where the actual data starts (look for "Ticker" header)
@@ -284,11 +244,14 @@ class YfinancePipeline:
                 data_start = i
                 break
 
+        # Raise error if the ticker isnt found (only client side exception)
         if data_start == 0:
             raise ValueError("Could not find ticker data in iShares CSV")
 
-        # Parse the CSV starting from the data rows
+        # Parse the CSV starting from the data rows (Raw CSV data)
         csv_data = '\n'.join(lines[data_start:])
+    
+        # Read the raw response from memory
         df = pd.read_csv(StringIO(csv_data))
 
         # Extract tickers from the Ticker column
@@ -300,16 +263,22 @@ class YfinancePipeline:
                  and not str(ticker).startswith('CASH')
                  and not str(ticker).startswith('USD')
                  and len(str(ticker).strip()) <= 5]  # Most tickers are 1-5 chars
-
-        self.logger.info(f"[SCRAPER] Russell 3000: {len(tickers)} tickers found")
+        
         return tickers
     
-    def _scrape_nasdaq_tickers(self) -> List[str]:
-        """Scrapes tickers from nasdaq"""
-        self.logger.info("[SCRAPER] Fetching NASDAQ tickers")
+    def scrape_nasdaq_tickers(self) -> List[str]:
+        """
+        Scrapes tickers from nasdaq
+        
+        Args:
+            None
+
+        Returns:
+            A list of tickers from the nasdaq
+        """
+
         nasdaq_url = "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
 
-        self.logger.debug(f"[SCRAPER] GET {nasdaq_url}")
         # Read the nasdaq url file with | as the separator
         df = pd.read_csv(nasdaq_url, sep='|')
         
@@ -319,70 +288,191 @@ class YfinancePipeline:
         # Extract the Symbol column to a list & remove test symbol
         tickers = df[df['Test Issue'] == 'N']['Symbol'].tolist()
 
-        self.logger.info(f"[SCRAPER] NASDAQ: {len(tickers)} tickers found")
         # Return ticker list
         return tickers
     
-    def validate_tickers(self, tickers: List[str], test_days: int = 21) -> Dict[str, Any]:
+    def validate_ticker(self, ticker: str, test_days: int = 21) -> bool:
         """
         Validate tickers by attempting to download recent data
 
         Args:
-            tickers: List of tickers to validate
+            ticker: Ticker symbol to download
             test_days: Number of calendar days of data to test (default 21 days ~ 15 trading days)
 
         Returns:
-            Dict with 'valid' and 'invalid' ticker lists
+            True if ticker valid, false otherwise
         """
-        valid_tickers = []
-        invalid_tickers = []
-        
-        # Configure logger to supress yfinance output
-        yf_logger = logging.getLogger('yfinance')
-        yf_logger.disabled = True
 
         # Calculate date range
         end_date = date.today()
         start_date = end_date - timedelta(days=test_days)
 
-        self.logger.info(f"[VALIDATE] Starting: {len(tickers)} tickers")
+        # Download single ticker with explicit auto_adjust
+        data = yf.download(
+            tickers=ticker,
+            start=start_date,
+            end=end_date,
+            progress=False,
+            threads=False,
+            auto_adjust=True  # Explicitly set to avoid warning
+        )
 
-        # Process one ticker at a time with clean progress bar
-        for ticker in tqdm(tickers, desc="Validating tickers", ncols=100, leave=True):
-            try:
-                self.logger.debug(f"[VALIDATE] Checking: {ticker}")
+        # Check if we got valid data with minimum trading days
+        # For 21 calendar days, we expect at least 10 trading days (accounting for weekends/holidays)
+        min_trading_days = 10  # Minimum required trading days to be considered valid
 
-                # Download single ticker with explicit auto_adjust
-                data = yf.download(
-                    tickers=ticker,
-                    start=start_date,
-                    end=end_date,
-                    progress=False,
-                    threads=False,
-                    auto_adjust=True  # Explicitly set to avoid warning
-                )
+        if data is not None and not data.empty and len(data) >= min_trading_days:
+            return True
+        else:
+            return False
 
-                # Check if we got valid data with minimum trading days
-                # For 21 calendar days, we expect at least 10 trading days (accounting for weekends/holidays)
-                min_trading_days = 10  # Minimum required trading days to be considered valid
+    def validate_ohlcv(self, df: pd.DataFrame, ticker: str) -> Dict[str, Any]:
+        """
+        Comprehensive OHLCV validation for backtest-quality data.
 
-                if data is not None and not data.empty and len(data) >= min_trading_days:
-                    self.logger.debug(f"[VALIDATE] ✓ {ticker}: {len(data)} trading days")
-                    valid_tickers.append(ticker)
-                else:
-                    days_found = len(data) if data is not None and not data.empty else 0
-                    self.logger.debug(f"[VALIDATE] ✗ {ticker}: only {days_found}/{min_trading_days} trading days")
-                    invalid_tickers.append(ticker)
+        Validates:
+        - Schema completeness (all required columns)
+        - No null/NaN values
+        - No negative prices or volume
+        - Price logic (High >= Low, Open/Close within range)
+        - Data variability (no constant values)
+        - No gaps in date sequence
+        - Minimum data quality thresholds
 
-            except Exception as e:
-                self.logger.debug(f"[VALIDATE] ✗ {ticker}: {str(e)[:50]}")
-                invalid_tickers.append(ticker)
+        Args:
+            df: DataFrame with OHLCV data (must have Date index)
+            ticker: Ticker symbol
 
-        self.logger.info(f"[VALIDATE] Complete: {len(valid_tickers)} valid | {len(invalid_tickers)} invalid")
+        Returns:
+            dict: {
+                'valid': bool,
+                'total_checks': int,
+                'passed': int,
+                'failed': int,
+                'failed_checks': [list of failed check names]
+            }
+        """
+        # type: ignore - Great Expectations type stubs incomplete
 
-        return {
-            'valid': valid_tickers,
-            'invalid': invalid_tickers,
-            'total': len(tickers),
-            'success_rate': len(valid_tickers) / len(tickers) if tickers else 0
-        }
+        # Suppress GX progress bars and warnings
+        import warnings
+        import logging
+        import os
+        import sys
+
+        warnings.filterwarnings('ignore')
+
+        # Completely disable all GX logging and progress bars
+        logging.getLogger('great_expectations').disabled = True
+        logging.getLogger('great_expectations.core').disabled = True
+        logging.getLogger('great_expectations.data_context').disabled = True
+
+        # Redirect stderr to suppress tqdm progress bars
+        old_stderr = sys.stderr
+        sys.stderr = open(os.devnull, 'w')
+
+        os.environ['GX_ANALYTICS_ENABLED'] = 'False'
+
+        try:
+            context = gx.get_context()
+            data_source = context.data_sources.add_pandas(name=f"{ticker}_source")
+            data_asset = data_source.add_dataframe_asset(name=f"{ticker}_asset")
+            batch_def = data_asset.add_batch_definition_whole_dataframe(f"{ticker}_batch")
+
+            # Comprehensive expectations for backtest-quality data
+            expectations = [
+                # 1. Schema validation - required columns exist (order doesn't matter)
+                gx.expectations.ExpectTableColumnsToMatchSet(
+                    column_set={"Open", "High", "Low", "Close", "Volume"}
+                ),
+
+                # 2. Null/NaN validation - zero tolerance
+                gx.expectations.ExpectColumnValuesToNotBeNull(column="Open"),
+                gx.expectations.ExpectColumnValuesToNotBeNull(column="High"),
+                gx.expectations.ExpectColumnValuesToNotBeNull(column="Low"),
+                gx.expectations.ExpectColumnValuesToNotBeNull(column="Close"),
+                gx.expectations.ExpectColumnValuesToNotBeNull(column="Volume"),
+
+                # 3. Positive price validation - no negative or zero prices
+                gx.expectations.ExpectColumnValuesToBeBetween(column="Open", min_value=0.01),
+                gx.expectations.ExpectColumnValuesToBeBetween(column="High", min_value=0.01),
+                gx.expectations.ExpectColumnValuesToBeBetween(column="Low", min_value=0.01),
+                gx.expectations.ExpectColumnValuesToBeBetween(column="Close", min_value=0.01),
+
+                # 4. Volume validation - non-negative only (0 volume is valid)
+                gx.expectations.ExpectColumnValuesToBeBetween(column="Volume", min_value=0),
+
+                # 5. Price logic validation - High >= Low
+                gx.expectations.ExpectColumnPairValuesAToBeGreaterThanB(
+                    column_A="High", column_B="Low", or_equal=True
+                ),
+
+                # 6. Open/Close within High/Low range
+                gx.expectations.ExpectColumnPairValuesAToBeGreaterThanB(
+                    column_A="High", column_B="Open", or_equal=True
+                ),
+                gx.expectations.ExpectColumnPairValuesAToBeGreaterThanB(
+                    column_A="Open", column_B="Low", or_equal=True
+                ),
+                gx.expectations.ExpectColumnPairValuesAToBeGreaterThanB(
+                    column_A="High", column_B="Close", or_equal=True
+                ),
+                gx.expectations.ExpectColumnPairValuesAToBeGreaterThanB(
+                    column_A="Close", column_B="Low", or_equal=True
+                ),
+
+                # 7. Data variability - no constant values (stddev > 0)
+                gx.expectations.ExpectColumnStdevToBeBetween(column="Close", min_value=0.01),
+                gx.expectations.ExpectColumnStdevToBeBetween(column="Volume", min_value=0.01),
+
+                # 8. Minimum row count - at least 10 trading days
+                gx.expectations.ExpectTableRowCountToBeBetween(min_value=10),
+
+                # 9. Unique dates - no duplicate timestamps
+                gx.expectations.ExpectColumnValuesToBeUnique(column="Date") if "Date" in df.columns else None,
+            ]
+
+            # Remove None values (for conditional expectations)
+            expectations = [e for e in expectations if e is not None]
+
+            # Run all validations and collect results
+            batch = batch_def.get_batch(batch_parameters={"dataframe": df})
+
+            results = []
+            failed_checks = []
+
+            for expectation in expectations:
+                result = batch.validate(expectation)
+                results.append(result)
+
+                if not result.success:
+                    # Get expectation type for better logging
+                    expectation_type = type(expectation).__name__
+                    failed_checks.append(expectation_type)
+
+            passed = sum(1 for r in results if r.success)
+            failed = len(results) - passed
+
+            # Restore stderr
+            sys.stderr = old_stderr
+
+            return {
+                'valid': failed == 0,
+                'total_checks': len(results),
+                'passed': passed,
+                'failed': failed,
+                'failed_checks': failed_checks
+            }
+
+        except Exception as e:
+            # Restore stderr
+            sys.stderr = old_stderr
+
+            # If validation setup fails, return error result
+            return {
+                'valid': False,
+                'total_checks': 0,
+                'passed': 0,
+                'failed': 0,
+                'failed_checks': [f"ValidationError: {str(e)}"]
+            }
