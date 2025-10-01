@@ -16,6 +16,7 @@ import yfinance as yf
 # Airflow modules (type ignore due to incompatible version for now, works on airflow but not python 3.12)
 from airflow.decorators import dag, task  # type: ignore
 from airflow.models.param import Param  # type: ignore
+from airflow.datasets import Dataset  # type: ignore
 
 # Custom python modules
 from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline
@@ -24,6 +25,11 @@ from utils.database import get_database_url
 
 # Logging
 from loguru import logger
+
+# AIRFLOW DATASETS
+# Dataset produced when securities are registered - triggers daily DAG
+# URI format: postgresql://<host>/<database>/<schema>/<table>
+SECURITIES_DATASET = Dataset("postgresql://algoflow_sec_master_postgres/sec_master_dev/security_master/securities")
 
 # Helper function for get_tickers {ticker, groupings}
 def add_tickers_to_groupings(tickers: List[str], group_name: str, ticker_groupings: DefaultDict[str, List[str]]) -> int:
@@ -131,7 +137,11 @@ def yfinance_historical_parallel():
         logger.success(f"Converted {len(ticker_list)} tickers for parallel processing")
         return ticker_list
 
-    @task(retries=2, retry_delay=timedelta(minutes=1))
+    @task(
+        retries=2,
+        retry_delay=timedelta(minutes=1),
+        map_index_template="{{ task.op_kwargs['ticker_data'][0] }}"  # Show ticker symbol in UI
+    )
     def validate_single_ticker(ticker_data: Tuple[str, List[str]]) -> Dict[str, Any]:
         """Validate single ticker with yfinance (MAPPED TASK)"""
         ticker, groupings = ticker_data
@@ -173,9 +183,17 @@ def yfinance_historical_parallel():
 
         return valid_tickers
 
-    @task(retries=2, retry_delay=timedelta(minutes=1))
+    @task(
+        retries=2,
+        retry_delay=timedelta(minutes=1),
+        map_index_template="{{ task.op_kwargs['ticker_data'][0] }}",
+        outlets=[SECURITIES_DATASET]  # Produce dataset when securities registered
+    )
     def register_security(ticker_data: Tuple[str, List[str]]) -> Dict[str, Any]:
-        """Register single ticker in database (MAPPED TASK)"""
+        """Register single ticker in database (MAPPED TASK)
+
+        Produces SECURITIES_DATASET - triggers daily update DAG when new securities added
+        """
         ticker, groupings = ticker_data
 
         client = YfinanceClient(get_database_url())
@@ -192,7 +210,11 @@ def yfinance_historical_parallel():
             'registered': True
         }
 
-    @task(retries=3, retry_delay=timedelta(minutes=2))
+    @task(
+        retries=3,
+        retry_delay=timedelta(minutes=2),
+        map_index_template="{{ task.op_kwargs['ticker_data']['ticker'] }}"
+    )
     def download_ohlcv(ticker_data: Dict[str, Any], **context) -> Dict[str, Any]:
         """Download historical OHLCV for single ticker (MAPPED TASK)"""
         ticker = ticker_data['ticker']
@@ -218,7 +240,11 @@ def yfinance_historical_parallel():
             'data': df.to_json(date_format='iso', orient='split')
         }
 
-    @task(retries=1, retry_delay=timedelta(minutes=1))
+    @task(
+        retries=1,
+        retry_delay=timedelta(minutes=1),
+        map_index_template="{{ task.op_kwargs['download_result']['ticker'] }}"
+    )
     def validate_ohlcv_data(download_result: Dict[str, Any]) -> Dict[str, Any]:
         """Validate OHLCV data quality with Great Expectations (MAPPED TASK)"""
         ticker = download_result['ticker']
@@ -249,7 +275,11 @@ def yfinance_historical_parallel():
         )
         return download_result
 
-    @task(retries=3, retry_delay=timedelta(minutes=1))
+    @task(
+        retries=3,
+        retry_delay=timedelta(minutes=1),
+        map_index_template="{{ task.op_kwargs['validated_data']['ticker'] }}"
+    )
     def insert_ohlcv_data(validated_data: Dict[str, Any]) -> Dict[str, Any]:
         """Insert validated OHLCV data to database (MAPPED TASK)"""
         ticker = validated_data['ticker']
@@ -274,7 +304,11 @@ def yfinance_historical_parallel():
             'success': True
         }
 
-    @task(retries=3, retry_delay=timedelta(minutes=2))
+    @task(
+        retries=3,
+        retry_delay=timedelta(minutes=2),
+        map_index_template="{{ task.op_kwargs['ohlcv_result']['ticker'] }}"
+    )
     def download_metadata(ohlcv_result: Dict[str, Any]) -> Dict[str, Any]:
         """Download metadata for single ticker (MAPPED TASK)"""
         ticker = ohlcv_result['ticker']
@@ -289,7 +323,11 @@ def yfinance_historical_parallel():
             'metadata': metadata
         }
 
-    @task(retries=3, retry_delay=timedelta(minutes=1))
+    @task(
+        retries=3,
+        retry_delay=timedelta(minutes=1),
+        map_index_template="{{ task.op_kwargs['metadata_result']['ticker'] }}"
+    )
     def insert_metadata_data(metadata_result: Dict[str, Any]) -> Dict[str, Any]:
         """Insert metadata to database (MAPPED TASK)"""
         ticker = metadata_result['ticker']
