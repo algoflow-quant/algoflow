@@ -1,0 +1,25 @@
+services:
+  # Single container with everything (Loki, Grafana, Tempo, and Prometheus)
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: otel-lgtm
+    ports:
+      - "3000:3000"     # Grafana UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    volumes:
+      - otel_data:/data  # Persist trace, log, and metric data
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+volumes:
+  otel_data:
+    driver: local
+
+networks:
+  monitoring:
+    name: monitoring
+    driver: bridge

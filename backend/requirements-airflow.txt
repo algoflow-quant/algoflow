@@ -10,3 +10,5 @@ html5lib
 # Fix for Python 3.10 compatibility
 multitasking
 loguru
+# Data validation
+great_expectations

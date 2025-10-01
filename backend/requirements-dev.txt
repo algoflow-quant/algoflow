@@ -16,3 +16,6 @@ ipykernel
 # Airflow (optional - only for local development/IDE support)
 apache-airflow
 apache-airflow-providers-postgres
+
+# Data quality
+great_expectations
