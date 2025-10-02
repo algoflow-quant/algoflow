@@ -170,6 +170,8 @@ def yfinance_historical_parallel():
         valid_tickers = []
         invalid_tickers = []
 
+        logger.info("Filtering tickers")
+
         for result in validation_results:
             if result['valid']:
                 valid_tickers.append((result['ticker'], result['groupings']))

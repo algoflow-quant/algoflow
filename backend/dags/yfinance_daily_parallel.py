@@ -31,7 +31,7 @@ from loguru import logger
         'retries': 2,
         'retry_delay': timedelta(minutes=2),
         'retry_exponential_backoff': True,
-        'max_active_tis_per_dag': 20,  # Allow 30 parallel ticker updates
+        'max_active_tis_per_dag': 20,  # Allow 20 parallel ticker updates
         'depends_on_past': False,
         'trigger_rule': 'all_done',  # Continue even if some tickers fail
     },
@@ -114,41 +114,32 @@ def yfinance_daily_parallel():
 
         logger.debug(f"Downloading {ticker} from {start_date} to {end_date}")
 
-        try:
-            # Download data for single ticker
-            df = pipeline.scrape_date_range(
-                ticker=ticker,
-                start_date=start_date,
-                end_date=end_date,
-                interval='1d'
-            )
+        # Let exceptions propagate - Airflow will handle retries and failure
+        df = pipeline.scrape_date_range(
+            ticker=ticker,
+            start_date=start_date,
+            end_date=end_date,
+            interval='1d'
+        )
 
-            if df is None or df.empty:
-                logger.debug(f"No new data for {ticker}")
-                return {
-                    'ticker': ticker,
-                    'success': False,
-                    'rows': 0,
-                    'message': 'No new data'
-                }
-
-            logger.debug(f"Downloaded {len(df)} rows for {ticker}")
-
+        if df is None or df.empty:
+            # This is expected behavior, not an error - return safely
+            logger.info(f"No new data for {ticker}")
             return {
                 'ticker': ticker,
-                'success': True,
-                'rows': len(df),
-                'data': df.to_json(date_format='iso', orient='split')
-            }
-
-        except Exception as e:
-            logger.error(f"Error downloading {ticker}: {str(e)}")
-            return {
-                'ticker': ticker,
-                'success': False,
+                'success': True,  # This IS success - ticker checked, no new data
                 'rows': 0,
-                'message': str(e)
+                'data': None
             }
+
+        logger.success(f"Downloaded {len(df)} rows for {ticker}")
+
+        return {
+            'ticker': ticker,
+            'success': True,
+            'rows': len(df),
+            'data': df.to_json(date_format='iso', orient='split')
+        }
 
     @task(
         retries=1,
@@ -159,8 +150,8 @@ def yfinance_daily_parallel():
         """Validate OHLCV data quality (MAPPED TASK)"""
         ticker = download_result['ticker']
 
-        # Skip validation if download failed
-        if not download_result['success']:
+        # Skip validation if no data to validate
+        if not download_result['success'] or download_result['data'] is None:
             return download_result
 
         # Deserialize DataFrame
@@ -199,36 +190,30 @@ def yfinance_daily_parallel():
         ticker = validated_data['ticker']
 
         # Skip if validation failed or no data
-        if not validated_data['success']:
-            return validated_data
-
-        try:
-            # Deserialize DataFrame
-            df = pd.read_json(StringIO(validated_data['data']), orient='split')
-            df = df.reset_index().rename(columns={'index': 'Date'})
-
-            client = YfinanceClient(get_database_url())
-            result = client.insert_ohlcv(ticker, df)
-
-            if not result['success']:
-                raise ValueError(f"Insert failed: {result['message']}")
-
-            logger.debug(f"✓ Inserted {result['rows_affected']} rows for {ticker}")
-
+        if not validated_data['success'] or validated_data['data'] is None:
             return {
                 'ticker': ticker,
-                'success': True,
-                'rows_inserted': result['rows_affected']
+                'success': True,  # Success = processed correctly (no data to insert)
+                'rows_inserted': 0
             }
 
-        except Exception as e:
-            logger.error(f"Error inserting {ticker}: {str(e)}")
-            return {
-                'ticker': ticker,
-                'success': False,
-                'rows_inserted': 0,
-                'message': str(e)
-            }
+        # Deserialize DataFrame
+        df = pd.read_json(StringIO(validated_data['data']), orient='split')
+        df = df.reset_index().rename(columns={'index': 'Date'})
+
+        client = YfinanceClient(get_database_url())
+        result = client.insert_ohlcv(ticker, df)
+
+        if not result['success']:
+            raise ValueError(f"Insert failed: {result['message']}")
+
+        logger.success(f"✓ Inserted {result['rows_affected']} rows for {ticker}")
+
+        return {
+            'ticker': ticker,
+            'success': True,
+            'rows_inserted': result['rows_affected']
+        }
 
     @task
     def check_metadata_update(**context) -> Dict[str, Any]:
@@ -260,31 +245,22 @@ def yfinance_daily_parallel():
         if not metadata_decision['should_update']:
             return {
                 'ticker': ticker,
-                'success': False,
+                'success': True,  # Success = processed correctly (skipped as intended)
                 'skipped': True
             }
 
-        try:
-            pipeline = YfinancePipeline()
-            metadata = pipeline.scrape_metadata(ticker)
+        # Let exceptions propagate - Airflow will handle retries and failure
+        pipeline = YfinancePipeline()
+        metadata = pipeline.scrape_metadata(ticker)
 
-            logger.debug(f"✓ Downloaded metadata for {ticker}")
+        logger.success(f"✓ Downloaded metadata for {ticker}")
 
-            return {
-                'ticker': ticker,
-                'success': True,
-                'metadata': metadata,
-                'skipped': False
-            }
-
-        except Exception as e:
-            logger.error(f"Error downloading metadata for {ticker}: {str(e)}")
-            return {
-                'ticker': ticker,
-                'success': False,
-                'message': str(e),
-                'skipped': False
-            }
+        return {
+            'ticker': ticker,
+            'success': True,
+            'metadata': metadata,
+            'skipped': False
+        }
 
     @task(
         retries=2,
@@ -299,31 +275,21 @@ def yfinance_daily_parallel():
         if metadata_result.get('skipped') or not metadata_result['success']:
             return metadata_result
 
-        try:
-            metadata = metadata_result['metadata']
+        metadata = metadata_result['metadata']
 
-            client = YfinanceClient(get_database_url())
-            result = client.insert_metadata(ticker, metadata)
+        client = YfinanceClient(get_database_url())
+        result = client.insert_metadata(ticker, metadata)
 
-            if not result['success']:
-                raise ValueError(f"Insert failed: {result['message']}")
+        if not result['success']:
+            raise ValueError(f"Insert failed: {result['message']}")
 
-            logger.debug(f"✓ Inserted metadata for {ticker}")
+        logger.success(f"✓ Inserted metadata for {ticker}")
 
-            return {
-                'ticker': ticker,
-                'success': True,
-                'skipped': False
-            }
-
-        except Exception as e:
-            logger.error(f"Error inserting metadata for {ticker}: {str(e)}")
-            return {
-                'ticker': ticker,
-                'success': False,
-                'message': str(e),
-                'skipped': False
-            }
+        return {
+            'ticker': ticker,
+            'success': True,
+            'skipped': False
+        }
 
     @task
     def generate_summary(
@@ -334,10 +300,12 @@ def yfinance_daily_parallel():
         """Generate comprehensive summary report"""
 
         # OHLCV stats
-        ohlcv_success = sum(1 for r in ohlcv_results if r.get('success'))
-        ohlcv_failed = sum(1 for r in ohlcv_results if not r.get('success') and r.get('message') != 'No new data')
-        ohlcv_no_data = sum(1 for r in ohlcv_results if r.get('message') == 'No new data')
+        ohlcv_success = sum(1 for r in ohlcv_results if r.get('success') and r.get('rows_inserted', 0) > 0)
+        ohlcv_no_data = sum(1 for r in ohlcv_results if r.get('success') and r.get('rows_inserted', 0) == 0)
         total_rows = sum(r.get('rows_inserted', 0) for r in ohlcv_results)
+
+        # Note: Failed tasks won't appear in results due to Airflow failure handling
+        # trigger_rule='all_done' ensures summary runs even with failures
 
         summary = f"""
         ═══════════════════════════════════════════════════════════
@@ -345,34 +313,24 @@ def yfinance_daily_parallel():
         ═══════════════════════════════════════════════════════════
 
         OHLCV Data:
-        ✓ Success:     {ohlcv_success:4d} tickers
-        ✗ Failed:      {ohlcv_failed:4d} tickers
+        ✓ Success:     {ohlcv_success:4d} tickers ({total_rows} rows inserted)
         No new data: {ohlcv_no_data:4d} tickers
-        Total rows: {total_rows:4d} inserted
+        (Check Airflow UI for any failed tasks)
         """
 
         # Metadata stats (only if updated)
         if metadata_decision['should_update']:
-            metadata_success = sum(1 for r in metadata_results if r.get('success'))
-            metadata_failed = sum(1 for r in metadata_results if not r.get('success') and not r.get('skipped'))
+            metadata_success = sum(1 for r in metadata_results if r.get('success') and not r.get('skipped'))
+            metadata_skipped = sum(1 for r in metadata_results if r.get('skipped'))
 
             summary += f"""
         Metadata Update ({metadata_decision['reason']}):
         ✓ Success: {metadata_success:4d} tickers
-        ✗ Failed:  {metadata_failed:4d} tickers
+        (Check Airflow UI for any failed tasks)
             """
         else:
             summary += """
         Metadata: Skipped (only updates on Mondays)
-            """
-
-        # Alert on high failure rate
-        total_processed = ohlcv_success + ohlcv_failed + ohlcv_no_data
-        if total_processed > 0:
-            failure_rate = ohlcv_failed / total_processed
-            if failure_rate > 0.1:
-                summary += f"""
-            WARNING: High failure rate ({failure_rate:.1%})
             """
 
         summary += "\n        ═══════════════════════════════════════════════════════════"
