@@ -19,3 +19,6 @@ apache-airflow-providers-postgres
 
 # Data quality
 great_expectations
+
+# Market days
+pandas-market-calendars

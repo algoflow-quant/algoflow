@@ -50,6 +50,23 @@ services:
     networks:
       - algoflow_network
 
+  # OpenTelemetry LGTM Stack (Loki, Grafana, Tempo, Prometheus)
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: algoflow_otel_lgtm
+    ports:
+      - "3000:3000"     # Grafana UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    volumes:
+      - otel_data:/data
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - ENABLE_LOGS_OTELCOL=true
+    networks:
+      - algoflow_network
+    restart: unless-stopped
+
   # Airflow - Simple setup with admin/admin credentials
   airflow:
     build:
@@ -76,6 +93,7 @@ services:
       - _AIRFLOW_WWW_USER_FIRSTNAME=Admin
       - _AIRFLOW_WWW_USER_LASTNAME=User
       - DATABASE_URL=postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://algoflow_otel_lgtm:4318
     volumes:
       - ./dags:/opt/airflow/dags
       - ./sec_data_pipeline:/opt/airflow/plugins/sec_data_pipeline
@@ -126,6 +144,8 @@ volumes:
   postgres_data:
     driver: local
   airflow_db:
+    driver: local
+  otel_data:
     driver: local
 
 networks:
