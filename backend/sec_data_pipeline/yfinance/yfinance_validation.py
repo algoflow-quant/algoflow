@@ -53,7 +53,7 @@ class YfinanceValidator:
         )
 
         # Metrics: ohlcv validation duration histogram
-        self.ohlcv_validation_duration = meter.create_histogram(
+        self.ohlcv_validation_duration_histogram = meter.create_histogram(
             name="yfinance_ohlcv_validation_duration_seconds",
             description="OHLCV validation operation duration",
             unit="s"
@@ -347,7 +347,7 @@ class YfinanceValidator:
                 # Record metrics
                 validation_status = "valid" if is_valid else "invalid"
                 self.ohlcv_validation_counter.add(1, {"status": "success", "result": validation_status})
-                self.ohlcv_validation_duration.record(duration)
+                self.ohlcv_validation_duration_histogram.record(duration)
                 self.ohlcv_validation_checks_histogram.record(total_checks)
                 self.ohlcv_validation_failed_checks_histogram.record(failed)
 
@@ -377,7 +377,7 @@ class YfinanceValidator:
                 # Record failure metric
                 duration = time.time() - start_time
                 self.ohlcv_validation_counter.add(1, {"status": "failure", "result": "error"})
-                self.ohlcv_validation_duration.record(duration)
+                self.ohlcv_validation_duration_histogram.record(duration)
 
                 # Keep error log
                 self.logger.error(f"Failed to validate OHLCV for {ticker}: {e}")
