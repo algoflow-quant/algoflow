@@ -93,8 +93,8 @@ class YfinanceTickerScraper:
                     "content_length": len(response.text)
                 })
 
-                # Read the table from the HTML
-                tables = pd.read_html(response.text)
+                # Read the table from the HTML (wrap in StringIO to avoid FutureWarning)
+                tables = pd.read_html(StringIO(response.text))
                 df = tables[0]
 
                 # Extract tickers from Symbol column
