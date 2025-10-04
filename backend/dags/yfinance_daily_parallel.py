@@ -13,7 +13,7 @@ from airflow.models.param import Param #type: ignore
 
 # Custom imports
 from utils.database import get_database_url
-from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline
+from sec_data_pipeline.yfinance import YfinancePipeline, YfinanceValidator
 from sec_master_db.clients.yfinance_client import YfinanceClient
 from loguru import logger
 
@@ -157,8 +157,8 @@ def yfinance_daily_parallel():
         # Deserialize DataFrame
         df = pd.read_json(StringIO(download_result['data']), orient='split')
 
-        pipeline = YfinancePipeline()
-        validation = pipeline.validate_ohlcv(df, ticker)
+        validator = YfinanceValidator()
+        validation = validator.validate_ohlcv(df, ticker)
 
         if not validation['valid']:
             failed_str = ', '.join(validation['failed_checks'])
