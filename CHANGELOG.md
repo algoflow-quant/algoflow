@@ -1,3 +1,21 @@
+## v2.1.4 (2025-10-07)
+
+### Fix
+
+- **docs**: use two-job workflow for GitHub Pages deployment
+
+## v2.1.3 (2025-10-07)
+
+### Fix
+
+- **docs**: add Python path for mkdocstrings and fix broken link
+
+## v2.1.2 (2025-10-07)
+
+### Fix
+
+- **docs**: update mkdocs dependencies to fix autorefs compatibility
+
 ## v2.1.1 (2025-10-07)
 
 ### Fix
