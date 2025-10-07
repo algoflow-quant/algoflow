@@ -57,3 +57,4 @@ nav:
           - Validation: data_pipeline/components/validation.md
           - YfinancePipeline: data_pipeline/components/yfinance_pipeline.md
           - YfinanceClient: data_pipeline/components/yfinance_client.md
+  - Contributing: CONTRIBUTING.md
