@@ -1,3 +1,35 @@
+## v2.1.0 (2025-10-07)
+
+### Feat
+
+- add lgtm stack with grafana dashboard & docker-compose obesrvability
+- **airflow**: add airflow and dags to manage etl pipelines
+- **yfinance-db-client**: added and manually test get tickers
+- **docker**: add docker setup with postgres, adminer, and dozzle
+- **db-client**: completed the update_security_metadata method
+- **db-client**: completed the insert metadata method
+- **db-client**: completed the insert ohlcv_data method
+- **db-client**: completed the insert_securities method
+- **db-client**: completed get_security_id method
+- **db-client**: added class and empty methods for yfinance db client
+
+### Fix
+
+- **ci**: changed app to pat token
+- removed try catch blocks and added more logs
+- fixed airflow docker, added db function to update securities table
+- renamed docker db contianer name
+- fixed bug in db client and added manual tests to jupyter
+
+### Refactor
+
+- modified directory structure and fixed bugs
+- **dag**: refectored daily dag and perfected data pipeline
+- **dag**: refacttored historical dag
+- **client**: refactored client and removed multiple ticker storage methods
+- **pipeline**: refactored yfinance pipline and made methods only take single tickers
+- **dag**: refactored dag files, fixed airflow docker setup, removed update security metdata
+
 ## v2.0.0 (2025-09-26)
 
 ### Feat
