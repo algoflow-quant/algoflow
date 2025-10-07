@@ -11,6 +11,8 @@
         <link rel="canonical" href="https://algoflow-quant.github.io/algoflow/CONTRIBUTING/">
       
       
+        <link rel="prev" href="../data_pipeline/components/yfinance_client/">
+      
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -18,7 +20,7 @@
     
     
       
-        <title>How to contribute - AlgoFlow Documentation</title>
+        <title>Contributing - AlgoFlow Documentation</title>
       
     
     
@@ -108,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              How to contribute
+              Contributing
             
           </span>
         </div>
@@ -550,6 +552,300 @@
   
 
     
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#initial-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Initial Steps
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Initial Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-clone-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Clone repo
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-install-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Install dependencies
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Install dependencies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#frontend-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Frontend Setup:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backend-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backend Setup:
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-setup-commit-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Setup commit tools
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Setup commit tools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-commitizen-for-easy-guided-commits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install commitizen for easy guided commits:
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-pre-commit-hooks-optional-but-reccommended-catch-commit-errors-before-pushing-to-online-repo" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install pre-commit hooks (Optional but reccommended, catch commit errors before pushing to online repo):
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commit-message-formatting-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Commit message formatting rules
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Commit message formatting rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#types-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      Types (Required)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scope (Optional)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#description-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      Description Rules
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-stuff" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other stuff
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#branch-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Branch workflow
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Branch workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protected-branches" class="md-nav__link">
+    <span class="md-ellipsis">
+      Protected Branches
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#branch-naming-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      Branch Naming Convention
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a Branch
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#working-on-your-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      Working on your branch
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pull-request-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pull Request Process
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pull Request Process">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-push-branch-to-github" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Push branch to GitHub
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-create-pull-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Create Pull request
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -810,93 +1106,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#what" class="md-nav__link">
-    <span class="md-ellipsis">
-      What
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#why" class="md-nav__link">
-    <span class="md-ellipsis">
-      Why
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how" class="md-nav__link">
-    <span class="md-ellipsis">
-      How
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      Testing
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#screenshots-if-ui-changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Screenshots (if UI changes)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      Checklist
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Checklist">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#3-pr-requirements" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. PR requirements
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-after-approval" class="md-nav__link">
-    <span class="md-ellipsis">
-      4. After Approval
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-pr-labels" class="md-nav__link">
-    <span class="md-ellipsis">
-      5. PR Labels
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1058,45 +1267,6 @@ git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </
 <p>PR Title:
 - Use clear, descriptive title
 - Example: "Add portfolio analytics dashboard"</p>
-<p>PR Description Template:</p>
-<h2 id="what">What</h2>
-<p>Brief description of changes</p>
-<h2 id="why">Why</h2>
-<p>Problem this solves or feature it adds</p>
-<h2 id="how">How</h2>
-<p>Technical approach taken</p>
-<h2 id="testing">Testing</h2>
-<p>How you tested the changes</p>
-<h2 id="screenshots-if-ui-changes">Screenshots (if UI changes)</h2>
-<p>[Add screenshots here]</p>
-<h2 id="checklist">Checklist</h2>
-<ul>
-<li>[ ] Tests pass locally</li>
-<li>[ ] Documentation updated</li>
-<li>[ ] No console errors</li>
-<li>[ ] Followed code style</li>
-</ul>
-<h3 id="3-pr-requirements">3. PR requirements</h3>
-<p>Before your PR can be merged:
--  All commits follow conventional format (enforced by CI)
--  All GitHub Actions checks pass
--  Code review approved by @cadenlund
--  All review comments resolved
--  Branch is up to date with dev
--  PR is focused (one feature/fix only)</p>
-<h3 id="4-after-approval">4. After Approval</h3>
-<ul>
-<li>Only @cadenlund merges PRs</li>
-<li>GitHub will prompt to delete branch - click "Delete branch"</li>
-<li>Pull latest dev locally: git pull origin dev</li>
-</ul>
-<h3 id="5-pr-labels">5. PR Labels</h3>
-<p>Add relevant labels:
-- feature - New functionality
-- bug - Bug fixes
-- documentation - Docs only
-- refactor - Code improvement
-- urgent - Needs quick review</p>
 
 
 

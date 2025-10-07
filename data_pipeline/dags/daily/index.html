@@ -446,9 +446,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#schedule" class="md-nav__link">
+  <a href="#what-it-does" class="md-nav__link">
     <span class="md-ellipsis">
-      Schedule
+      What It Does
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
     </span>
   </a>
   
@@ -464,9 +473,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#parallelization" class="md-nav__link">
     <span class="md-ellipsis">
-      Configuration
+      Parallelization
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retry-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Retry Strategy
     </span>
   </a>
   
@@ -625,6 +643,26 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -652,9 +690,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#schedule" class="md-nav__link">
+  <a href="#what-it-does" class="md-nav__link">
     <span class="md-ellipsis">
-      Schedule
+      What It Does
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
     </span>
   </a>
   
@@ -670,9 +717,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#parallelization" class="md-nav__link">
     <span class="md-ellipsis">
-      Configuration
+      Parallelization
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retry-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Retry Strategy
     </span>
   </a>
   
@@ -697,23 +753,99 @@
 
 
 <h1 id="daily-parallel-dag">Daily Parallel DAG</h1>
-<p>Incremental daily updates for existing securities.</p>
-<h2 id="schedule">Schedule</h2>
-<p>Weekdays at 9:30 PM UTC (after market close)</p>
-<h2 id="task-flow">Task Flow</h2>
-<ol>
-<li>Get tickers from database</li>
-<li>Download latest OHLCV data</li>
-<li>Validate OHLCV quality</li>
-<li>Insert to database</li>
-<li>Update metadata</li>
-</ol>
+<p>Automated daily updates for all registered securities. Runs weeknights after US market close to fetch the day's OHLCV and metadata.</p>
+<h2 id="what-it-does">What It Does</h2>
+<p>Pulls all tickers from the database, downloads the latest trading day's data, validates it, and upserts to the hypertable. Handles weekends and holidays automatically - if you run it on Saturday, it gets Friday's data.</p>
+<p>Good for keeping your database current with minimal overhead.</p>
 <h2 id="configuration">Configuration</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>schedule</code></td>
+<td><code>'30 21 * * 1-5'</code></td>
+<td>Weekdays 9:30 PM UTC (after US market close)</td>
+</tr>
+<tr>
+<td><code>trigger</code></td>
+<td>Automatic</td>
+<td>Schedule-based</td>
+</tr>
+</tbody>
+</table>
+<h2 id="task-flow">Task Flow</h2>
+<pre class="mermaid"><code>%%{init: {'theme':'base', 'themeVariables': { 'fontSize':'14px'}}}%%
+graph LR
+    A[get_tickers] --&gt; B[download_ohlcv&lt;br/&gt;PARALLEL 20x]
+    B --&gt; C[validate_ohlcv&lt;br/&gt;PARALLEL 20x]
+    C --&gt; D[insert_ohlcv&lt;br/&gt;PARALLEL 20x]
+    D --&gt; E[download_metadata&lt;br/&gt;PARALLEL 20x]
+    E --&gt; F[insert_metadata&lt;br/&gt;PARALLEL 20x]
+    F --&gt; G[generate_report]
+
+    style A fill:#f0f0f0,stroke:#333,color:#000
+    style B fill:#e1f5ff,stroke:#333,color:#000
+    style C fill:#e1f5ff,stroke:#333,color:#000
+    style D fill:#e1f5ff,stroke:#333,color:#000
+    style E fill:#e1f5ff,stroke:#333,color:#000
+    style F fill:#e1f5ff,stroke:#333,color:#000
+    style G fill:#d4edda,stroke:#333,color:#000</code></pre>
+<h2 id="parallelization">Parallelization</h2>
 <ul>
-<li>Max parallel tasks: 20</li>
-<li>Retry: 2-3 attempts </li>
-<li>Auto-runs weekdays only</li>
+<li><strong>Max concurrent</strong>: 20 tasks at once (<code>max_active_tis_per_dag</code>)</li>
+<li><strong>Independence</strong>: Each ticker processes separately</li>
+<li><strong>Failure handling</strong>: Failed tickers don't block others (<code>trigger_rule: 'all_done'</code>)</li>
 </ul>
+<h2 id="retry-strategy">Retry Strategy</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Retries</th>
+<th>Delay</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>download_ohlcv</td>
+<td>3</td>
+<td>2 min</td>
+<td>yfinance rate limits</td>
+</tr>
+<tr>
+<td>validate_ohlcv</td>
+<td>1</td>
+<td>1 min</td>
+<td>Validation rarely fails temporarily</td>
+</tr>
+<tr>
+<td>insert_ohlcv</td>
+<td>3</td>
+<td>1 min</td>
+<td>DB under load</td>
+</tr>
+<tr>
+<td>download_metadata</td>
+<td>3</td>
+<td>2 min</td>
+<td>Network issues</td>
+</tr>
+<tr>
+<td>insert_metadata</td>
+<td>3</td>
+<td>1 min</td>
+<td>DB under load</td>
+</tr>
+</tbody>
+</table>
+<p>All use exponential backoff.</p>
 
 
 

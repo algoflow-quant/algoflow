@@ -374,35 +374,20 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dags" class="md-nav__link">
+  <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
-      DAGs
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DAGs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#historical-dag" class="md-nav__link">
-    <span class="md-ellipsis">
-      Historical DAG
+      Key Features
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#daily-dag" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#dag-workflows" class="md-nav__link">
     <span class="md-ellipsis">
-      Daily DAG
+      DAG Workflows
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -419,6 +404,15 @@
   <a href="#deployment" class="md-nav__link">
     <span class="md-ellipsis">
       Deployment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance
     </span>
   </a>
   
@@ -656,6 +650,26 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -692,35 +706,20 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#dags" class="md-nav__link">
+  <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
-      DAGs
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="DAGs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#historical-dag" class="md-nav__link">
-    <span class="md-ellipsis">
-      Historical DAG
+      Key Features
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#daily-dag" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#dag-workflows" class="md-nav__link">
     <span class="md-ellipsis">
-      Daily DAG
+      DAG Workflows
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -737,6 +736,15 @@
   <a href="#deployment" class="md-nav__link">
     <span class="md-ellipsis">
       Deployment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance
     </span>
   </a>
   
@@ -761,56 +769,196 @@
 
 
 <h1 id="data-pipeline-overview">Data Pipeline Overview</h1>
-<p>Apache Airflow 2.10.4 pipeline for securities data ingestion.</p>
+<p>Airflow-based pipeline that pulls securities data from yfinance and stores it in PostgreSQL with TimescaleDB.</p>
 <h2 id="architecture">Architecture</h2>
 <pre class="mermaid"><code>graph TB
-    A[Airflow DAGs] --&gt; B[YfinancePipeline]
-    B --&gt; C[YfinanceClient]
-    C --&gt; D[(PostgreSQL + TimescaleDB)]
+    subgraph "Airflow DAGs"
+        H[yfinance_historical_parallel.py]
+        D[yfinance_daily_parallel.py]
+    end
 
-    B --&gt; E[Scraping]
-    B --&gt; F[Validation]
-    C --&gt; G[Bulk Insert]</code></pre>
+    subgraph "YfinancePipeline"
+        S1[scrape_sp500_tickers]
+        S2[scrape_russell3000_tickers]
+        S3[scrape_nasdaq_tickers]
+        V[validate_ticker]
+        SD[scrape_date_range]
+        VO[validate_ohlcv]
+        M[scrape_metadata]
+    end
+
+    subgraph "YfinanceClient"
+        IS[insert_security]
+        IO[insert_ohlcv]
+        IM[insert_metadata]
+        GT[get_tickers]
+    end
+
+    subgraph "Database"
+        SEC[(securities table)]
+        OHLCV[(ohlcv_data hypertable)]
+        META[(stock_metadata)]
+    end
+
+    H --&gt; S1 &amp; S2 &amp; S3
+    S1 &amp; S2 &amp; S3 --&gt; V
+    V --&gt; IS
+    IS --&gt; SEC
+    SEC --&gt; SD
+    SD --&gt; VO
+    VO --&gt; IO
+    IO --&gt; OHLCV
+    OHLCV --&gt; M
+    M --&gt; IM
+    IM --&gt; META
+
+    D --&gt; GT
+    GT --&gt; SD</code></pre>
 <div class="admonition info">
-<p class="admonition-title">Performance</p>
-<p>Uses <code>psycopg2.extras.execute_values</code> for 10-100x faster bulk inserts</p>
+<p class="admonition-title">Architecture Components</p>
+<p>Three main layers: DAGs orchestrate workflows, Pipeline scrapes/validates data, Client handles database operations</p>
 </div>
-<h2 id="dags">DAGs</h2>
-<h3 id="historical-dag">Historical DAG</h3>
-<p>Bulk data loading with parallel execution</p>
-<ul>
-<li><strong>Trigger</strong>: Manual via Airflow UI</li>
-<li><strong>Parallelism</strong>: 20 concurrent tasks</li>
-<li><strong>Retries</strong>: 2-3 with exponential backoff</li>
-</ul>
-<h3 id="daily-dag">Daily DAG</h3>
-<p>Incremental updates for existing securities</p>
-<ul>
-<li><strong>Schedule</strong>: Weekdays 9:30 PM UTC</li>
-<li><strong>Parallelism</strong>: 20 concurrent tasks</li>
-<li><strong>Auto-runs</strong>: After market close</li>
-</ul>
-<h2 id="configuration">Configuration</h2>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Environment Variable</label><label for="__tabbed_1_2">Python</label></div>
+<p>The pipeline has three main components:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Key Features</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DAGs</strong></td>
+<td>Workflow orchestration</td>
+<td>Airflow <code>.expand()</code> for parallelization, max 20 concurrent tasks</td>
+</tr>
+<tr>
+<td><strong>Pipeline</strong></td>
+<td>Data scraping &amp; validation</td>
+<td>yfinance integration, Great Expectations checks</td>
+</tr>
+<tr>
+<td><strong>Client</strong></td>
+<td>Database operations</td>
+<td>Bulk inserts with <code>execute_values</code>, upsert patterns</td>
+</tr>
+</tbody>
+</table>
+<h2 id="key-features">Key Features</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Implementation</th>
+<th>Benefit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parallel Execution</td>
+<td>Airflow <code>.expand()</code> with 20 concurrent tasks</td>
+<td>Process multiple tickers simultaneously</td>
+</tr>
+<tr>
+<td>Bulk Inserts</td>
+<td><code>psycopg2.extras.execute_values</code> with 1000-row batches</td>
+<td>10-100x faster than individual inserts</td>
+</tr>
+<tr>
+<td>Data Validation</td>
+<td>18 Great Expectations checks</td>
+<td>Catch bad data before database insertion</td>
+</tr>
+<tr>
+<td>Error Handling</td>
+<td>Raise exceptions instead of error dicts</td>
+<td>Airflow handles retries automatically</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dag-workflows">DAG Workflows</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Historical DAG</label><label for="__tabbed_1_2">Daily DAG</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nv">SEC_MASTER_DB_URL</span><span class="o">=</span><span class="s2">&quot;postgresql://user:pass@localhost:5432/sec_master_dev&quot;</span>
-</code></pre></div>
+<p>Manual trigger for initial setup or backfills:</p>
+<ol>
+<li>Scrape ticker lists from Wikipedia, iShares, NASDAQ</li>
+<li>Validate each ticker with test download</li>
+<li>Register valid tickers in <code>securities</code> table</li>
+<li>Download OHLCV data for date range</li>
+<li>Validate OHLCV with Great Expectations</li>
+<li>Bulk insert to <code>ohlcv_data</code> hypertable</li>
+<li>Download and insert metadata</li>
+</ol>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">utils.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_database_url</span>
-<span class="n">client</span> <span class="o">=</span> <span class="n">YfinanceClient</span><span class="p">(</span><span class="n">get_database_url</span><span class="p">())</span>
-</code></pre></div>
+<p>Auto-runs weekdays at 9:30 PM UTC:</p>
+<ol>
+<li>Get tickers from <code>securities</code> table</li>
+<li>Download latest OHLCV data</li>
+<li>Validate and insert</li>
+<li>Update metadata</li>
+</ol>
 </div>
 </div>
 </div>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Example</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SEC_MASTER_DB_URL</code></td>
+<td><code>postgresql://user:pass@localhost:5432/sec_master_dev</code></td>
+<td>Database connection string</td>
+</tr>
+</tbody>
+</table>
 <h2 id="deployment">Deployment</h2>
-<div class="admonition tip">
-<p class="admonition-title">Quick Start</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>infrastructure/docker-compose.data-pipeline.yml<span class="w"> </span>up<span class="w"> </span>-d
+<div class="highlight"><pre><span></span><code><span class="c1"># Start Airflow and PostgreSQL</span>
+docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>infrastructure/docker-compose.data-pipeline.yml<span class="w"> </span>up<span class="w"> </span>-d
+
+<span class="c1"># Access Airflow UI</span>
+<span class="c1"># http://localhost:8080 (admin/admin)</span>
 </code></pre></div>
-</div>
-<p>Access Airflow: <code>http://localhost:8080</code> (admin/admin)</p>
+<h2 id="performance">Performance</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Batch size</td>
+<td>1000 rows</td>
+<td>Bulk insert optimization</td>
+</tr>
+<tr>
+<td>Parallelism</td>
+<td>20 tasks</td>
+<td>Max concurrent ticker processing</td>
+</tr>
+<tr>
+<td>Retry strategy</td>
+<td>2-3 attempts</td>
+<td>Exponential backoff for transient failures</td>
+</tr>
+<tr>
+<td>Rate limiting</td>
+<td><code>max_active_tis_per_dag</code></td>
+<td>Avoid API throttling</td>
+</tr>
+</tbody>
+</table>
 
 
 

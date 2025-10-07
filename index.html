@@ -301,9 +301,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#links" class="md-nav__link">
+  <a href="#components" class="md-nav__link">
     <span class="md-ellipsis">
-      Links
+      Components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Links
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Development
     </span>
   </a>
   
@@ -601,6 +619,26 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="CONTRIBUTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -628,9 +666,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#links" class="md-nav__link">
+  <a href="#components" class="md-nav__link">
     <span class="md-ellipsis">
-      Links
+      Components
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-links" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Links
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#local-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Development
     </span>
   </a>
   
@@ -656,13 +712,35 @@
 
 <h1 id="algoflow-documentation">AlgoFlow Documentation</h1>
 <p><img alt="Version" src="https://img.shields.io/github/v/tag/algoflow-quant/algoflow" /></p>
-<p>AlgoFlow is a web-based quantitative trading platform.</p>
-<h2 id="links">Links</h2>
+<p>Web-based quantitative trading platform with automated data pipelines and backtesting infrastructure.</p>
+<div class="admonition success">
+<p class="admonition-title">Current Status</p>
+<p>Data pipeline operational - Historical and daily DAGs running in production</p>
+</div>
+<h2 id="components">Components</h2>
 <ul>
-<li><a href="data_pipeline/overview/">Data Pipeline</a></li>
-<li><a href="data_pipeline/components/yfinance_pipeline/">API Reference</a></li>
-<li><a href="https://github.com/algoflow-quant/algoflow">GitHub</a></li>
+<li><strong><a href="data_pipeline/overview/">Data Pipeline</a></strong> - Airflow-based securities data ingestion from yfinance</li>
+<li><strong><a href="data_pipeline/components/yfinance_pipeline/">API Reference</a></strong> - Complete pipeline and client documentation</li>
 </ul>
+<h2 id="quick-links">Quick Links</h2>
+<ul>
+<li><a href="https://github.com/algoflow-quant/algoflow">GitHub Repository</a></li>
+<li><a href="data_pipeline/dags/historical/">Historical DAG</a></li>
+<li><a href="data_pipeline/dags/daily/">Daily DAG</a></li>
+</ul>
+<h2 id="local-development">Local Development</h2>
+<p>Test docs locally with hot reload:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Create venv and install dependencies</span>
+python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>docs/requirements.txt
+
+<span class="c1"># Serve at http://127.0.0.1:8000</span>
+mkdocs<span class="w"> </span>serve
+
+<span class="c1"># Build static site</span>
+mkdocs<span class="w"> </span>build
+</code></pre></div>
 
 
 

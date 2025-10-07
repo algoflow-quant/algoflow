@@ -425,18 +425,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#trigger" class="md-nav__link">
+  <a href="#what-it-does" class="md-nav__link">
     <span class="md-ellipsis">
-      Trigger
+      What It Does
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
-      Parameters
+      Configuration
     </span>
   </a>
   
@@ -452,9 +452,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#parallelization" class="md-nav__link">
     <span class="md-ellipsis">
-      Configuration
+      Parallelization
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retry-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Retry Strategy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Run
     </span>
   </a>
   
@@ -634,6 +652,26 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -661,18 +699,18 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#trigger" class="md-nav__link">
+  <a href="#what-it-does" class="md-nav__link">
     <span class="md-ellipsis">
-      Trigger
+      What It Does
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
-      Parameters
+      Configuration
     </span>
   </a>
   
@@ -688,9 +726,27 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#parallelization" class="md-nav__link">
     <span class="md-ellipsis">
-      Configuration
+      Parallelization
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retry-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Retry Strategy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example Run
     </span>
   </a>
   
@@ -715,32 +771,164 @@
 
 
 <h1 id="historical-parallel-dag">Historical Parallel DAG</h1>
-<p>Bulk historical data loading with parallel per-ticker execution.</p>
-<h2 id="trigger">Trigger</h2>
-<p>Manual via Airflow UI</p>
-<h2 id="parameters">Parameters</h2>
-<ul>
-<li><strong>years_back</strong>: 1-10 years (default: 10)</li>
-<li><strong>ticker_source</strong>: sp500, russell3000, nasdaq, all</li>
-<li><strong>ticker_limit</strong>: Limit tickers (0 = no limit)</li>
-</ul>
-<h2 id="task-flow">Task Flow</h2>
-<ol>
-<li>Get tickers from source</li>
-<li>Validate tickers in parallel</li>
-<li>Register securities in database</li>
-<li>Download OHLCV data</li>
-<li>Validate OHLCV quality</li>
-<li>Insert to database</li>
-<li>Download metadata</li>
-<li>Insert metadata</li>
-</ol>
+<p>Bulk historical data loader. Scrapes ticker lists, validates them, downloads multi-year OHLCV data, and stores everything in the database.</p>
+<h2 id="what-it-does">What It Does</h2>
+<p>Gets ticker lists from public sources (Wikipedia, iShares, NASDAQ), validates each one by test-downloading recent data, then downloads the full historical range you specify. Everything runs in parallel - up to 20 tickers processing at once.</p>
+<p>Good for initial database setup or backfilling new ticker lists.</p>
 <h2 id="configuration">Configuration</h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Options</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>years_back</code></td>
+<td>1-10</td>
+<td>10</td>
+<td>Years of historical data to download</td>
+</tr>
+<tr>
+<td><code>ticker_source</code></td>
+<td>sp500, russell3000, nasdaq, all</td>
+<td>sp500</td>
+<td>Which ticker list to use</td>
+</tr>
+<tr>
+<td><code>ticker_limit</code></td>
+<td>0-5000</td>
+<td>0</td>
+<td>Limit tickers (0 = no limit)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Trigger</strong>: Manual via Airflow UI</p>
+<h2 id="task-flow">Task Flow</h2>
+<pre class="mermaid"><code>%%{init: {'theme':'base', 'themeVariables': { 'fontSize':'14px'}}}%%
+graph LR
+    A[get_tickers] --&gt; B[convert_to_list]
+    B --&gt; C[validate_ticker&lt;br/&gt;PARALLEL 20x]
+    C --&gt; D[filter_valid]
+    D --&gt; E[register_security&lt;br/&gt;PARALLEL 20x]
+    E --&gt; F[download_ohlcv&lt;br/&gt;PARALLEL 20x]
+    F --&gt; G[validate_ohlcv&lt;br/&gt;PARALLEL 20x]
+    G --&gt; H[insert_ohlcv&lt;br/&gt;PARALLEL 20x]
+    H --&gt; I[download_metadata&lt;br/&gt;PARALLEL 20x]
+    I --&gt; J[insert_metadata&lt;br/&gt;PARALLEL 20x]
+    J --&gt; K[generate_report]
+
+    style A fill:#f0f0f0,stroke:#333,color:#000
+    style B fill:#f0f0f0,stroke:#333,color:#000
+    style C fill:#e1f5ff,stroke:#333,color:#000
+    style D fill:#f0f0f0,stroke:#333,color:#000
+    style E fill:#e1f5ff,stroke:#333,color:#000
+    style F fill:#e1f5ff,stroke:#333,color:#000
+    style G fill:#e1f5ff,stroke:#333,color:#000
+    style H fill:#e1f5ff,stroke:#333,color:#000
+    style I fill:#e1f5ff,stroke:#333,color:#000
+    style J fill:#e1f5ff,stroke:#333,color:#000
+    style K fill:#d4edda,stroke:#333,color:#000</code></pre>
+<h2 id="parallelization">Parallelization</h2>
 <ul>
-<li>Max parallel tasks: 20</li>
-<li>Retry: 2-3 attempts with exponential backoff</li>
-<li>Trigger rule: <code>all_done</code> (continues on failures)</li>
+<li><strong>Max concurrent</strong>: 20 tasks at once (<code>max_active_tis_per_dag</code>)</li>
+<li><strong>Independence</strong>: Each ticker processes separately</li>
+<li><strong>Failure handling</strong>: Failed tickers don't block others (<code>trigger_rule: 'all_done'</code>)</li>
 </ul>
+<h2 id="retry-strategy">Retry Strategy</h2>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Retries</th>
+<th>Delay</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>validate_ticker</td>
+<td>2</td>
+<td>1 min</td>
+<td>Network flakiness</td>
+</tr>
+<tr>
+<td>register_security</td>
+<td>2</td>
+<td>1 min</td>
+<td>DB connection issues</td>
+</tr>
+<tr>
+<td>download_ohlcv</td>
+<td>3</td>
+<td>2 min</td>
+<td>yfinance rate limits</td>
+</tr>
+<tr>
+<td>validate_ohlcv</td>
+<td>1</td>
+<td>1 min</td>
+<td>Validation rarely fails temporarily</td>
+</tr>
+<tr>
+<td>insert_ohlcv</td>
+<td>3</td>
+<td>1 min</td>
+<td>DB under load</td>
+</tr>
+<tr>
+<td>download_metadata</td>
+<td>3</td>
+<td>2 min</td>
+<td>Network issues</td>
+</tr>
+<tr>
+<td>insert_metadata</td>
+<td>3</td>
+<td>1 min</td>
+<td>DB under load</td>
+</tr>
+</tbody>
+</table>
+<p>All use exponential backoff.</p>
+<h2 id="example-run">Example Run</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Small Test</label><label for="__tabbed_1_2">Full S&amp;P 500</label><label for="__tabbed_1_3">Everything</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="c1"># Parameters</span>
+<span class="n">ticker_source</span> <span class="o">=</span> <span class="s1">&#39;sp500&#39;</span>
+<span class="n">years_back</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">ticker_limit</span> <span class="o">=</span> <span class="mi">5</span>
+
+<span class="c1"># Result</span>
+<span class="mi">5</span> <span class="n">tickers</span> <span class="err">×</span> <span class="mi">1</span> <span class="n">year</span> <span class="err">≈</span> <span class="mi">2</span> <span class="n">minutes</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="c1"># Parameters</span>
+<span class="n">ticker_source</span> <span class="o">=</span> <span class="s1">&#39;sp500&#39;</span>
+<span class="n">years_back</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">ticker_limit</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># Result</span>
+<span class="o">~</span><span class="mi">500</span> <span class="n">tickers</span> <span class="err">×</span> <span class="mi">10</span> <span class="n">years</span> <span class="err">≈</span> <span class="mi">2</span><span class="o">-</span><span class="mi">3</span> <span class="n">hours</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="c1"># Parameters</span>
+<span class="n">ticker_source</span> <span class="o">=</span> <span class="s1">&#39;all&#39;</span>
+<span class="n">years_back</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">ticker_limit</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># Result</span>
+<span class="o">~</span><span class="mi">6000</span> <span class="n">tickers</span> <span class="err">×</span> <span class="mi">10</span> <span class="n">years</span> <span class="err">≈</span> <span class="mi">12</span><span class="o">-</span><span class="mi">18</span> <span class="n">hours</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 
 
 

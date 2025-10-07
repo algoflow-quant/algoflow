@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ticker-scrapers" class="md-skip">
+        <a href="#yfinancetickers" class="md-skip">
           Skip to content
         </a>
       
@@ -518,45 +518,57 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Sources">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#sp-500" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
-      S&amp;P 500
+      How It Works
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#russell-3000" class="md-nav__link">
-    <span class="md-ellipsis">
-      Russell 3000
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nasdaq" class="md-nav__link">
-    <span class="md-ellipsis">
-      NASDAQ
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#validation" class="md-nav__link">
+  <a href="#api-reference" class="md-nav__link">
     <span class="md-ellipsis">
-      Validation
+      API Reference
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      YfinanceTickers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_nasdaq_tickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      scrape_nasdaq_tickers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_russell3000_tickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      scrape_russell3000_tickers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_sp500_tickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      scrape_sp500_tickers
     </span>
   </a>
   
@@ -649,6 +661,26 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CONTRIBUTING/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Contributing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -682,45 +714,57 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Sources">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#sp-500" class="md-nav__link">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
-      S&amp;P 500
+      How It Works
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#russell-3000" class="md-nav__link">
-    <span class="md-ellipsis">
-      Russell 3000
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#nasdaq" class="md-nav__link">
-    <span class="md-ellipsis">
-      NASDAQ
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#validation" class="md-nav__link">
+  <a href="#api-reference" class="md-nav__link">
     <span class="md-ellipsis">
-      Validation
+      API Reference
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      YfinanceTickers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_nasdaq_tickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      scrape_nasdaq_tickers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_russell3000_tickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      scrape_russell3000_tickers
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_sp500_tickers" class="md-nav__link">
+    <span class="md-ellipsis">
+      scrape_sp500_tickers
     </span>
   </a>
   
@@ -744,29 +788,714 @@
   
 
 
-<h1 id="ticker-scrapers">Ticker Scrapers</h1>
-<p>Methods for scraping ticker lists from public sources.</p>
+<h1 id="yfinancetickers">YfinanceTickers</h1>
+<p>Scrapes ticker lists from public sources (S&amp;P 500, Russell 3000, NASDAQ).</p>
+<div class="admonition info">
+<p class="admonition-title">Component Separation</p>
+<p>This class handles ticker list scraping only. For data scraping see <a href="../yfinance_pipeline/">YfinancePipeline</a>, for validation see <a href="../validation/">YfinanceValidation</a>.</p>
+</div>
 <h2 id="sources">Sources</h2>
-<h3 id="sp-500">S&amp;P 500</h3>
-<ul>
-<li>Source: Wikipedia</li>
-<li>Count: ~500 tickers</li>
-<li>Cleaned: Replaces dots with dashes (BRK.B → BRK-B)</li>
-</ul>
-<h3 id="russell-3000">Russell 3000</h3>
-<ul>
-<li>Source: iShares IWV ETF holdings CSV</li>
-<li>Count: ~3000 tickers</li>
-<li>Filters: Removes CASH, USD, and symbols &gt;5 characters</li>
-</ul>
-<h3 id="nasdaq">NASDAQ</h3>
-<ul>
-<li>Source: NASDAQ Trader official list</li>
-<li>Count: ~3000+ tickers</li>
-<li>Filters: Removes test issues</li>
-</ul>
-<h2 id="validation">Validation</h2>
-<p>Each ticker is validated by attempting a 21-day test download. Valid tickers must return ≥10 trading days of data.</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Method</th>
+<th>Count</th>
+<th>Cleaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S&amp;P 500</td>
+<td>Wikipedia table scrape</td>
+<td>~500</td>
+<td>Replace dots with dashes (BRK.B → BRK-B)</td>
+</tr>
+<tr>
+<td>Russell 3000</td>
+<td>iShares IWV ETF CSV</td>
+<td>~3000</td>
+<td>Remove CASH, USD, symbols &gt;5 chars</td>
+</tr>
+<tr>
+<td>NASDAQ</td>
+<td>NASDAQ Trader official list</td>
+<td>~3000+</td>
+<td>Remove test issues</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-it-works">How It Works</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">S&amp;P 500</label><label for="__tabbed_1_2">Russell 3000</label><label for="__tabbed_1_3">NASDAQ</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Pulls the Symbol column from Wikipedia's List of S&amp;P 500 companies table. Converts dots to dashes for yfinance compatibility.</p>
+<div class="admonition example">
+<p class="admonition-title">BRK.B → BRK-B</p>
+<p>yfinance uses dashes for class shares, not dots</p>
+</div>
+</div>
+<div class="tabbed-block">
+<p>Downloads iShares IWV ETF holdings CSV. The CSV has metadata rows at the top, so we scan for the "Ticker" header before parsing. Filters out CASH, USD positions, and symbols &gt;5 characters.</p>
+<div class="admonition warning">
+<p class="admonition-title">CSV Structure</p>
+<p>First ~10 rows are metadata - scan for "Ticker" before parsing</p>
+</div>
+</div>
+<div class="tabbed-block">
+<p>Uses the official NASDAQ Trader pipe-delimited file. Filters out test symbols using the "Test Issue" flag.</p>
+<div class="admonition success">
+<p class="admonition-title">Official Source</p>
+<p>Direct from NASDAQ, updated daily</p>
+</div>
+</div>
+</div>
+</div>
+<h2 id="api-reference">API Reference</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<a id="sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers"></a>
+    <div class="doc doc-contents first">
+
+
+        <p>Ticker list scraping from public sources
+- Scrapes S&amp;P 500, Russell 3000, NASDAQ ticker lists
+- Validates and cleans ticker symbols</p>
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>data_pipeline/sec_data_pipeline/yfinance/yfinance_tickers.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">  9</span>
+<span class="normal"> 10</span>
+<span class="normal"> 11</span>
+<span class="normal"> 12</span>
+<span class="normal"> 13</span>
+<span class="normal"> 14</span>
+<span class="normal"> 15</span>
+<span class="normal"> 16</span>
+<span class="normal"> 17</span>
+<span class="normal"> 18</span>
+<span class="normal"> 19</span>
+<span class="normal"> 20</span>
+<span class="normal"> 21</span>
+<span class="normal"> 22</span>
+<span class="normal"> 23</span>
+<span class="normal"> 24</span>
+<span class="normal"> 25</span>
+<span class="normal"> 26</span>
+<span class="normal"> 27</span>
+<span class="normal"> 28</span>
+<span class="normal"> 29</span>
+<span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">YfinanceTickers</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ticker list scraping from public sources</span>
+<span class="sd">    - Scrapes S&amp;P 500, Russell 3000, NASDAQ ticker lists</span>
+<span class="sd">    - Validates and cleans ticker symbols</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Validation constants</span>
+    <span class="n">MAX_TICKER_LENGTH</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># Maximum ticker symbol length</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Add headers to avoid 403 error (Forbidden, for ticker scraping)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;User-Agent&#39;</span><span class="p">:</span> <span class="s1">&#39;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36&#39;</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">scrape_sp500_tickers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrapes S&amp;P 500 constituents from Wikipedia&#39;s List of S&amp;P 500 companies.</span>
+
+<span class="sd">        Pulls the Symbol column from the first table and converts dots to dashes</span>
+<span class="sd">        for yfinance compatibility (BRK.B → BRK-B).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of ~500 ticker symbols</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">sp500_url</span> <span class="o">=</span> <span class="s2">&quot;https://en.wikipedia.org/wiki/List_of_S%26P_500_companies&quot;</span>
+
+        <span class="c1"># Fetch the HTML with headers</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sp500_url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+
+        <span class="c1"># Read the table from the HTML</span>
+        <span class="n">tables</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Extract tickers from Symbol column</span>
+        <span class="n">tickers</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;Symbol&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="c1"># Clean tickers (replace dots with dashes for BRK.B -&gt; BRK-B)</span>
+        <span class="n">tickers</span> <span class="o">=</span> <span class="p">[</span><span class="n">ticker</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">ticker</span> <span class="ow">in</span> <span class="n">tickers</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">tickers</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">scrape_russell3000_tickers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrapes Russell 3000 tickers from iShares IWV ETF holdings CSV.</span>
+
+<span class="sd">        The CSV has metadata rows at the top, so we scan for the &quot;Ticker&quot; header</span>
+<span class="sd">        before parsing. Filters out CASH, USD positions, and symbols &gt;5 characters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of ~3000 US equity tickers</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If Ticker column not found in CSV</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># IWV is the iShares Russell 3000 ETF - direct CSV download URL</span>
+        <span class="n">csv_url</span> <span class="o">=</span> <span class="s2">&quot;https://www.ishares.com/us/products/239714/ishares-russell-3000-etf/1467271812596.ajax?fileType=csv&amp;fileName=IWV_holdings&amp;dataType=fund&quot;</span>
+
+        <span class="c1"># Request the csv</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">csv_url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+
+        <span class="c1"># Parse CSV - iShares CSV has metadata in first ~10 rows</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Find where the actual data starts (look for &quot;Ticker&quot; header)</span>
+        <span class="n">data_start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+            <span class="k">if</span> <span class="s1">&#39;Ticker&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                <span class="n">data_start</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="k">break</span>
+
+        <span class="c1"># Raise error if the ticker isnt found (only client side exception)</span>
+        <span class="k">if</span> <span class="n">data_start</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not find ticker data in iShares CSV&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Parse the CSV starting from the data rows (Raw CSV data)</span>
+        <span class="n">csv_data</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">data_start</span><span class="p">:])</span>
+
+        <span class="c1"># Read the raw response from memory</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">StringIO</span><span class="p">(</span><span class="n">csv_data</span><span class="p">))</span>
+
+        <span class="c1"># Extract tickers from the Ticker column</span>
+        <span class="n">tickers</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;Ticker&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="c1"># Clean tickers - remove cash positions and invalid entries</span>
+        <span class="n">tickers</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">ticker</span> <span class="ow">in</span> <span class="n">tickers</span>
+                 <span class="k">if</span> <span class="n">ticker</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                 <span class="ow">and</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CASH&#39;</span><span class="p">)</span>
+                 <span class="ow">and</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;USD&#39;</span><span class="p">)</span>
+                 <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MAX_TICKER_LENGTH</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">tickers</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">scrape_nasdaq_tickers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrapes NASDAQ-listed tickers from the official NASDAQ Trader symbol directory.</span>
+
+<span class="sd">        The file is pipe-delimited with a &quot;Test Issue&quot; flag that we use to filter out</span>
+<span class="sd">        test symbols.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of ~3000+ NASDAQ-listed tickers</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">nasdaq_url</span> <span class="o">=</span> <span class="s2">&quot;https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt&quot;</span>
+
+        <span class="c1"># Read the nasdaq url file with | as the separator</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">nasdaq_url</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;|&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Remove nan values from the data</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Symbol&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Extract the Symbol column to a list &amp; remove test symbol</span>
+        <span class="n">tickers</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;Test Issue&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;N&#39;</span><span class="p">][</span><span class="s1">&#39;Symbol&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="c1"># Return ticker list</span>
+        <span class="k">return</span> <span class="n">tickers</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_nasdaq_tickers" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">scrape_nasdaq_tickers</span><span class="p">()</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Scrapes NASDAQ-listed tickers from the official NASDAQ Trader symbol directory.</p>
+<p>The file is pipe-delimited with a "Test Issue" flag that we use to filter out
+test symbols.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.List">List</span>[str]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of ~3000+ NASDAQ-listed tickers</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>data_pipeline/sec_data_pipeline/yfinance/yfinance_tickers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scrape_nasdaq_tickers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scrapes NASDAQ-listed tickers from the official NASDAQ Trader symbol directory.</span>
+
+<span class="sd">    The file is pipe-delimited with a &quot;Test Issue&quot; flag that we use to filter out</span>
+<span class="sd">    test symbols.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of ~3000+ NASDAQ-listed tickers</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">nasdaq_url</span> <span class="o">=</span> <span class="s2">&quot;https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt&quot;</span>
+
+    <span class="c1"># Read the nasdaq url file with | as the separator</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">nasdaq_url</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">&#39;|&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Remove nan values from the data</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Symbol&#39;</span><span class="p">])</span>
+
+    <span class="c1"># Extract the Symbol column to a list &amp; remove test symbol</span>
+    <span class="n">tickers</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;Test Issue&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;N&#39;</span><span class="p">][</span><span class="s1">&#39;Symbol&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="c1"># Return ticker list</span>
+    <span class="k">return</span> <span class="n">tickers</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_russell3000_tickers" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">scrape_russell3000_tickers</span><span class="p">()</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Scrapes Russell 3000 tickers from iShares IWV ETF holdings CSV.</p>
+<p>The CSV has metadata rows at the top, so we scan for the "Ticker" header
+before parsing. Filters out CASH, USD positions, and symbols &gt;5 characters.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.List">List</span>[str]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of ~3000 US equity tickers</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>ValueError</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If Ticker column not found in CSV</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>data_pipeline/sec_data_pipeline/yfinance/yfinance_tickers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scrape_russell3000_tickers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scrapes Russell 3000 tickers from iShares IWV ETF holdings CSV.</span>
+
+<span class="sd">    The CSV has metadata rows at the top, so we scan for the &quot;Ticker&quot; header</span>
+<span class="sd">    before parsing. Filters out CASH, USD positions, and symbols &gt;5 characters.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of ~3000 US equity tickers</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If Ticker column not found in CSV</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># IWV is the iShares Russell 3000 ETF - direct CSV download URL</span>
+    <span class="n">csv_url</span> <span class="o">=</span> <span class="s2">&quot;https://www.ishares.com/us/products/239714/ishares-russell-3000-etf/1467271812596.ajax?fileType=csv&amp;fileName=IWV_holdings&amp;dataType=fund&quot;</span>
+
+    <span class="c1"># Request the csv</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">csv_url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+
+    <span class="c1"># Parse CSV - iShares CSV has metadata in first ~10 rows</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Find where the actual data starts (look for &quot;Ticker&quot; header)</span>
+    <span class="n">data_start</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;Ticker&#39;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="n">data_start</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">break</span>
+
+    <span class="c1"># Raise error if the ticker isnt found (only client side exception)</span>
+    <span class="k">if</span> <span class="n">data_start</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not find ticker data in iShares CSV&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Parse the CSV starting from the data rows (Raw CSV data)</span>
+    <span class="n">csv_data</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="n">data_start</span><span class="p">:])</span>
+
+    <span class="c1"># Read the raw response from memory</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">StringIO</span><span class="p">(</span><span class="n">csv_data</span><span class="p">))</span>
+
+    <span class="c1"># Extract tickers from the Ticker column</span>
+    <span class="n">tickers</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;Ticker&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="c1"># Clean tickers - remove cash positions and invalid entries</span>
+    <span class="n">tickers</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">ticker</span> <span class="ow">in</span> <span class="n">tickers</span>
+             <span class="k">if</span> <span class="n">ticker</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+             <span class="ow">and</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CASH&#39;</span><span class="p">)</span>
+             <span class="ow">and</span> <span class="ow">not</span> <span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;USD&#39;</span><span class="p">)</span>
+             <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ticker</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MAX_TICKER_LENGTH</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">tickers</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="sec_data_pipeline.yfinance.yfinance_tickers.YfinanceTickers.scrape_sp500_tickers" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">scrape_sp500_tickers</span><span class="p">()</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Scrapes S&amp;P 500 constituents from Wikipedia's List of S&amp;P 500 companies.</p>
+<p>Pulls the Symbol column from the first table and converts dots to dashes
+for yfinance compatibility (BRK.B → BRK-B).</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="typing.List">List</span>[str]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of ~500 ticker symbols</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>data_pipeline/sec_data_pipeline/yfinance/yfinance_tickers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scrape_sp500_tickers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scrapes S&amp;P 500 constituents from Wikipedia&#39;s List of S&amp;P 500 companies.</span>
+
+<span class="sd">    Pulls the Symbol column from the first table and converts dots to dashes</span>
+<span class="sd">    for yfinance compatibility (BRK.B → BRK-B).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of ~500 ticker symbols</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sp500_url</span> <span class="o">=</span> <span class="s2">&quot;https://en.wikipedia.org/wiki/List_of_S%26P_500_companies&quot;</span>
+
+    <span class="c1"># Fetch the HTML with headers</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sp500_url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+
+    <span class="c1"># Read the table from the HTML</span>
+    <span class="n">tables</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Extract tickers from Symbol column</span>
+    <span class="n">tickers</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;Symbol&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+    <span class="c1"># Clean tickers (replace dots with dashes for BRK.B -&gt; BRK-B)</span>
+    <span class="n">tickers</span> <span class="o">=</span> <span class="p">[</span><span class="n">ticker</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">ticker</span> <span class="ow">in</span> <span class="n">tickers</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">tickers</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
