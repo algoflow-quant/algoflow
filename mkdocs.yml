@@ -25,6 +25,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths: [data_pipeline]
           options:
             docstring_style: google
             show_source: true
