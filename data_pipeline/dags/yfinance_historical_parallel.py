@@ -3,11 +3,7 @@ from datetime import datetime, timedelta, date
 from typing import List, Dict, Any, Tuple, DefaultDict
 from collections import defaultdict
 from io import StringIO
-import sys
 import warnings
-import logging
-
-sys.path.append('/opt/airflow/plugins') # add plugins to path (airflow plugins)
 
 # Third-party modules
 import pandas as pd
@@ -16,7 +12,6 @@ import yfinance as yf
 # Airflow modules (type ignore due to incompatible version for now, works on airflow but not python 3.12)
 from airflow.decorators import dag, task  # type: ignore
 from airflow.models.param import Param  # type: ignore
-from airflow.datasets import Dataset  # type: ignore
 
 # Custom python modules
 from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline
@@ -25,11 +20,6 @@ from utils.database import get_database_url
 
 # Logging
 from loguru import logger
-
-# AIRFLOW DATASETS
-# Dataset produced when securities are registered - triggers daily DAG
-# URI format: postgresql://<host>/<database>/<schema>/<table>
-SECURITIES_DATASET = Dataset("postgresql://algoflow_sec_master_postgres/sec_master_dev/security_master/securities")
 
 # Helper function for get_tickers {ticker, groupings}
 def add_tickers_to_groupings(tickers: List[str], group_name: str, ticker_groupings: DefaultDict[str, List[str]]) -> int:
@@ -188,14 +178,10 @@ def yfinance_historical_parallel():
     @task(
         retries=2,
         retry_delay=timedelta(minutes=1),
-        map_index_template="{{ task.op_kwargs['ticker_data'][0] }}",
-        outlets=[SECURITIES_DATASET]  # Produce dataset when securities registered
+        map_index_template="{{ task.op_kwargs['ticker_data'][0] }}"
     )
     def register_security(ticker_data: Tuple[str, List[str]]) -> Dict[str, Any]:
-        """Register single ticker in database (MAPPED TASK)
-
-        Produces SECURITIES_DATASET - triggers daily update DAG when new securities added
-        """
+        """Register single ticker in database (MAPPED TASK)"""
         ticker, groupings = ticker_data
 
         client = YfinanceClient(get_database_url())
