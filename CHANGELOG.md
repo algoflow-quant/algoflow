@@ -1,3 +1,9 @@
+## v2.1.4 (2025-10-07)
+
+### Fix
+
+- **docs**: use two-job workflow for GitHub Pages deployment
+
 ## v2.1.3 (2025-10-07)
 
 ### Fix
