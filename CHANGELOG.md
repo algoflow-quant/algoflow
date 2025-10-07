@@ -1,3 +1,9 @@
+## v2.1.1 (2025-10-07)
+
+### Fix
+
+- **ci**: change --follow-tags to --tags to force push tags when pushing
+
 ## v2.1.0 (2025-10-07)
 
 ### Feat
