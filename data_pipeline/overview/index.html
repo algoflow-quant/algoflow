@@ -380,6 +380,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DAGs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#historical-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Historical DAG
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#daily-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Daily DAG
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -674,6 +698,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="DAGs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#historical-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Historical DAG
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#daily-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      Daily DAG
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -715,23 +763,53 @@
 <h1 id="data-pipeline-overview">Data Pipeline Overview</h1>
 <p>Apache Airflow 2.10.4 pipeline for securities data ingestion.</p>
 <h2 id="architecture">Architecture</h2>
-<ul>
-<li><strong>DAGs</strong>: Airflow orchestration (historical + daily)</li>
-<li><strong>Pipeline</strong>: Data scraping and validation</li>
-<li><strong>Client</strong>: Database operations</li>
-<li><strong>Storage</strong>: PostgreSQL + TimescaleDB</li>
-</ul>
+<pre class="mermaid"><code>graph TB
+    A[Airflow DAGs] --&gt; B[YfinancePipeline]
+    B --&gt; C[YfinanceClient]
+    C --&gt; D[(PostgreSQL + TimescaleDB)]
+
+    B --&gt; E[Scraping]
+    B --&gt; F[Validation]
+    C --&gt; G[Bulk Insert]</code></pre>
+<div class="admonition info">
+<p class="admonition-title">Performance</p>
+<p>Uses <code>psycopg2.extras.execute_values</code> for 10-100x faster bulk inserts</p>
+</div>
 <h2 id="dags">DAGs</h2>
+<h3 id="historical-dag">Historical DAG</h3>
+<p>Bulk data loading with parallel execution</p>
 <ul>
-<li><strong>Historical</strong>: Bulk data loading (manual trigger)</li>
-<li><strong>Daily</strong>: Incremental updates (weekdays 9:30 PM UTC)</li>
+<li><strong>Trigger</strong>: Manual via Airflow UI</li>
+<li><strong>Parallelism</strong>: 20 concurrent tasks</li>
+<li><strong>Retries</strong>: 2-3 with exponential backoff</li>
+</ul>
+<h3 id="daily-dag">Daily DAG</h3>
+<p>Incremental updates for existing securities</p>
+<ul>
+<li><strong>Schedule</strong>: Weekdays 9:30 PM UTC</li>
+<li><strong>Parallelism</strong>: 20 concurrent tasks</li>
+<li><strong>Auto-runs</strong>: After market close</li>
 </ul>
 <h2 id="configuration">Configuration</h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Environment Variable</label><label for="__tabbed_1_2">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nv">SEC_MASTER_DB_URL</span><span class="o">=</span><span class="s2">&quot;postgresql://user:pass@localhost:5432/sec_master_dev&quot;</span>
 </code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">utils.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_database_url</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">YfinanceClient</span><span class="p">(</span><span class="n">get_database_url</span><span class="p">())</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 <h2 id="deployment">Deployment</h2>
+<div class="admonition tip">
+<p class="admonition-title">Quick Start</p>
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>infrastructure/docker-compose.data-pipeline.yml<span class="w"> </span>up<span class="w"> </span>-d
 </code></pre></div>
+</div>
 <p>Access Airflow: <code>http://localhost:8080</code> (admin/admin)</p>
 
 

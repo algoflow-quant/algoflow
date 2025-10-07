@@ -533,62 +533,20 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#validation-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation Process
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#validation-checks" class="md-nav__link">
     <span class="md-ellipsis">
       Validation Checks
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Validation Checks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#schema" class="md-nav__link">
-    <span class="md-ellipsis">
-      Schema
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#null-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      Null Checks
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#price-logic" class="md-nav__link">
-    <span class="md-ellipsis">
-      Price Logic
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#data-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      Data Quality
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#volume" class="md-nav__link">
-    <span class="md-ellipsis">
-      Volume
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -703,62 +661,20 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#validation-process" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation Process
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#validation-checks" class="md-nav__link">
     <span class="md-ellipsis">
       Validation Checks
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Validation Checks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#schema" class="md-nav__link">
-    <span class="md-ellipsis">
-      Schema
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#null-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      Null Checks
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#price-logic" class="md-nav__link">
-    <span class="md-ellipsis">
-      Price Logic
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#data-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      Data Quality
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#volume" class="md-nav__link">
-    <span class="md-ellipsis">
-      Volume
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -800,41 +716,107 @@
 
 <h1 id="data-validation">Data Validation</h1>
 <p>Great Expectations validation framework for OHLCV data quality.</p>
+<h2 id="validation-process">Validation Process</h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant DAG as Airflow DAG
+    participant Pipeline as YfinancePipeline
+    participant GX as Great Expectations
+
+    DAG-&gt;&gt;Pipeline: validate_ohlcv(df, ticker)
+    Pipeline-&gt;&gt;GX: Run 18 checks
+    GX--&gt;&gt;Pipeline: Results
+    alt Validation Pass
+        Pipeline--&gt;&gt;DAG: Success
+    else Validation Fail
+        Pipeline--&gt;&gt;DAG: Raise Exception
+    end</code></pre>
 <h2 id="validation-checks">Validation Checks</h2>
-<h3 id="schema">Schema</h3>
+<div class="admonition check">
+<p class="admonition-title">Schema Validation</p>
 <ul>
 <li>Required columns: Open, High, Low, Close, Volume</li>
 </ul>
-<h3 id="null-checks">Null Checks</h3>
+</div>
+<div class="admonition check">
+<p class="admonition-title">Null Checks</p>
 <ul>
 <li>Zero tolerance for NaN/null values</li>
 </ul>
-<h3 id="price-logic">Price Logic</h3>
+</div>
+<div class="admonition check">
+<p class="admonition-title">Price Logic</p>
 <ul>
 <li>High ≥ Low</li>
 <li>Open/Close within High/Low range</li>
 <li>Prices &gt; $0.01</li>
 </ul>
-<h3 id="data-quality">Data Quality</h3>
+</div>
+<div class="admonition check">
+<p class="admonition-title">Data Quality</p>
 <ul>
 <li>Standard deviation &gt; 0.01 (detects constant values)</li>
 <li>Minimum 10 rows</li>
 <li>Unique dates (no duplicates)</li>
 </ul>
-<h3 id="volume">Volume</h3>
+</div>
+<div class="admonition check">
+<p class="admonition-title">Volume</p>
 <ul>
 <li>Non-negative (0 allowed)</li>
 </ul>
+</div>
 <h2 id="constants">Constants</h2>
-<p>Defined in <code>YfinancePipeline</code> class:
-- <code>TICKER_VALIDATION_TEST_DAYS = 21</code>
-- <code>MIN_TRADING_DAYS_FOR_VALIDATION = 10</code>
-- <code>MIN_OHLCV_ROWS_FOR_VALIDATION = 10</code>
-- <code>MIN_PRICE_VALUE = 0.01</code>
-- <code>MIN_STDDEV_VALUE = 0.01</code>
-- <code>MAX_TICKER_LENGTH = 5</code></p>
+<p>Defined in <code>YfinancePipeline</code> class:</p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TICKER_VALIDATION_TEST_DAYS</code></td>
+<td>21</td>
+<td>Calendar days for ticker test</td>
+</tr>
+<tr>
+<td><code>MIN_TRADING_DAYS_FOR_VALIDATION</code></td>
+<td>10</td>
+<td>Minimum trading days required</td>
+</tr>
+<tr>
+<td><code>MIN_OHLCV_ROWS_FOR_VALIDATION</code></td>
+<td>10</td>
+<td>Minimum rows for validation</td>
+</tr>
+<tr>
+<td><code>MIN_PRICE_VALUE</code></td>
+<td>0.01</td>
+<td>Minimum valid price</td>
+</tr>
+<tr>
+<td><code>MIN_STDDEV_VALUE</code></td>
+<td>0.01</td>
+<td>Minimum standard deviation</td>
+</tr>
+<tr>
+<td><code>MAX_TICKER_LENGTH</code></td>
+<td>5</td>
+<td>Maximum ticker symbol length</td>
+</tr>
+</tbody>
+</table>
 <h2 id="error-handling">Error Handling</h2>
+<div class="admonition warning">
+<p class="admonition-title">Validation Failures</p>
 <p>Validation failures raise exceptions for Airflow to retry. Failed validations are logged with specific check names.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Debugging</p>
+<p>Check Airflow task logs for detailed validation failure messages with check names and row counts.</p>
+</div>
 
 
 
