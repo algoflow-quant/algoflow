@@ -1,0 +1,21 @@
+# Core dependencies
+yfinance
+pandas
+numpy
+psycopg2-binary
+sqlalchemy
+tqdm
+requests
+html5lib
+loguru
+
+# Jupyter for development
+jupyter
+ipykernel
+
+# Airflow (optional - only for local development/IDE support)
+apache-airflow
+apache-airflow-providers-postgres
+
+# Data quality
+great_expectations

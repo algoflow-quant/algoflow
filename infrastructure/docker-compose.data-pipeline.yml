@@ -1,0 +1,133 @@
+services:
+  # PostgreSQL with TimescaleDB for time-series data
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: algoflow_sec_master_postgres
+    command: postgres -c max_locks_per_transaction=1024 -c shared_buffers=256MB
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sec_master_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      # Auto-run SQL scripts from init folder
+      - ../data_pipeline/sec_master_db/init:/docker-entrypoint-initdb.d
+      # Persist data between container restarts
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - algoflow_network
+
+
+  # Adminer - Database management UI
+  adminer:
+    image: adminer
+    container_name: algoflow_adminer
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    networks:
+      - algoflow_network
+
+  # Dozzle - Real-time Docker log viewer
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: algoflow_dozzle
+    ports:
+      - "9999:8080"
+    environment:
+      DOZZLE_LEVEL: info
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - algoflow_network
+
+  # Airflow - Simple setup with admin/admin credentials
+  airflow:
+    build:
+      context: ../data_pipeline
+      dockerfile: Dockerfile.airflow
+    container_name: algoflow_airflow
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__MAX_MAP_LENGTH=20000
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__PARALLELISM=32
+      - AIRFLOW__CORE__DAG_CONCURRENCY=16
+      - AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG=20
+      - AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG=1
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://postgres:postgres@postgres:5432/airflow
+      - _AIRFLOW_DB_MIGRATE=true
+      - _AIRFLOW_WWW_USER_CREATE=true
+      - _AIRFLOW_WWW_USER_USERNAME=admin
+      - _AIRFLOW_WWW_USER_PASSWORD=admin
+      - _AIRFLOW_WWW_USER_ROLE=Admin
+      - _AIRFLOW_WWW_USER_EMAIL=admin@example.com
+      - _AIRFLOW_WWW_USER_FIRSTNAME=Admin
+      - _AIRFLOW_WWW_USER_LASTNAME=User
+      - DATABASE_URL=postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev
+    volumes:
+      - ../data_pipeline/dags:/opt/airflow/dags
+      - ../data_pipeline/sec_data_pipeline:/opt/airflow/plugins/sec_data_pipeline
+      - ../data_pipeline/sec_master_db:/opt/airflow/plugins/sec_master_db
+      - ../data_pipeline/utils:/opt/airflow/plugins/utils
+      - airflow_db:/opt/airflow
+    ports:
+      - "8080:8080"
+    networks:
+      - algoflow_network
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        # Wait for postgres to be ready
+        echo "Waiting for PostgreSQL..."
+        until PGPASSWORD=postgres psql -h postgres -U postgres -c '\q' 2>/dev/null; do
+          sleep 2
+        done
+
+        # Create airflow database if it doesn't exist
+        echo "Creating airflow database if needed..."
+        PGPASSWORD=postgres psql -h postgres -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'airflow'" | grep -q 1 || \
+        PGPASSWORD=postgres psql -h postgres -U postgres -c "CREATE DATABASE airflow"
+
+        echo "Initializing Airflow database..."
+        airflow db init
+
+        echo "Creating admin user..."
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@example.com || true
+
+        echo "Starting Airflow webserver and scheduler..."
+        # Remove any stale pid files
+        rm -f /opt/airflow/airflow-webserver.pid
+        rm -f /opt/airflow/airflow-scheduler.pid
+
+        airflow webserver --host 0.0.0.0 --port 8080 &
+        airflow scheduler
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  airflow_db:
+    driver: local
+
+networks:
+  algoflow_network:
+    driver: bridge

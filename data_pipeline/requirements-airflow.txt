@@ -1,0 +1,14 @@
+# Dependencies needed inside Airflow container for DAGs
+yfinance
+pandas
+numpy
+psycopg2-binary
+sqlalchemy
+tqdm
+requests
+html5lib
+# Fix for Python 3.10 compatibility
+multitasking
+loguru
+# Data validation
+great_expectations
