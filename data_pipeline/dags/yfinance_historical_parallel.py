@@ -15,6 +15,8 @@ from airflow.models.param import Param  # type: ignore
 
 # Custom python modules
 from sec_data_pipeline.yfinance.yfinance_pipeline import YfinancePipeline
+from sec_data_pipeline.yfinance.yfinance_tickers import YfinanceTickers
+from sec_data_pipeline.yfinance.yfinance_validation import YfinanceValidation
 from sec_master_db.clients.yfinance_client import YfinanceClient
 from utils.database import get_database_url
 
@@ -83,14 +85,14 @@ def yfinance_historical_parallel():
 
         logger.info(f"Getting tickers from source: {source}")
 
-        # Instantiate a yfpipline
-        pipeline = YfinancePipeline()
+        # Instantiate ticker scraper
+        tickers_scraper = YfinanceTickers()
 
-        # Map source names to their scraper methods in pipeline
+        # Map source names to their scraper methods
         TICKER_SOURCES = {
-            'sp500': pipeline.scrape_sp500_tickers,
-            'russell3000': pipeline.scrape_russell3000_tickers,
-            'nasdaq': pipeline.scrape_nasdaq_tickers,
+            'sp500': tickers_scraper.scrape_sp500_tickers,
+            'russell3000': tickers_scraper.scrape_russell3000_tickers,
+            'nasdaq': tickers_scraper.scrape_nasdaq_tickers,
         }
         
         # ticker.keys if all (keys is all the indexes) or else the individual function
@@ -136,8 +138,8 @@ def yfinance_historical_parallel():
         """Validate single ticker with yfinance (MAPPED TASK)"""
         ticker, groupings = ticker_data
 
-        pipeline = YfinancePipeline()
-        is_valid = pipeline.validate_ticker(ticker)
+        validator = YfinanceValidation()
+        is_valid = validator.validate_ticker(ticker)
 
         if is_valid:
             logger.debug(f"✓ {ticker} is valid")
@@ -240,8 +242,8 @@ def yfinance_historical_parallel():
         # Deserialize DataFrame from JSON (using StringIO to avoid deprecation warning)
         df = pd.read_json(StringIO(download_result['data']), orient='split')
 
-        pipeline = YfinancePipeline()
-        validation_result = pipeline.validate_ohlcv(df, ticker)
+        validator = YfinanceValidation()
+        validation_result = validator.validate_ohlcv(df, ticker)
 
         if not validation_result['valid']:
             failed_checks_str = ', '.join(validation_result['failed_checks'])
