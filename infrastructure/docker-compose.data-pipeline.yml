@@ -12,7 +12,7 @@ services:
       - "5432:5432"
     volumes:
       # Auto-run SQL scripts from init folder
-      - ./sec_master_db/init:/docker-entrypoint-initdb.d
+      - ../data_pipeline/sec_master_db/init:/docker-entrypoint-initdb.d
       # Persist data between container restarts
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -53,7 +53,7 @@ services:
   # Airflow - Simple setup with admin/admin credentials
   airflow:
     build:
-      context: .
+      context: ../data_pipeline
       dockerfile: Dockerfile.airflow
     container_name: algoflow_airflow
     depends_on:
@@ -77,10 +77,10 @@ services:
       - _AIRFLOW_WWW_USER_LASTNAME=User
       - DATABASE_URL=postgresql://postgres:postgres@algoflow_sec_master_postgres:5432/sec_master_dev
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./sec_data_pipeline:/opt/airflow/plugins/sec_data_pipeline
-      - ./sec_master_db:/opt/airflow/plugins/sec_master_db
-      - ./utils:/opt/airflow/plugins/utils
+      - ../data_pipeline/dags:/opt/airflow/dags
+      - ../data_pipeline/sec_data_pipeline:/opt/airflow/plugins/sec_data_pipeline
+      - ../data_pipeline/sec_master_db:/opt/airflow/plugins/sec_master_db
+      - ../data_pipeline/utils:/opt/airflow/plugins/utils
       - airflow_db:/opt/airflow
     ports:
       - "8080:8080"

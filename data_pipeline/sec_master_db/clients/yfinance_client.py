@@ -12,6 +12,9 @@ from psycopg2.extras import execute_values
 # Pandas dataframe manipulation
 import pandas as pd
 
+# Logging
+from loguru import logger
+
 class YfinanceClient:
     def __init__(self, db_url: str):
         """
@@ -89,9 +92,10 @@ class YfinanceClient:
             }
 
         # Catch Error
-        except Exception:
+        except Exception as e:
             session.rollback()  # Important: rollback on error so we dont commit partial data
-            raise
+            logger.error(f"Failed to insert security {ticker}: {e}")
+            raise Exception(f"Security insertion failed for {ticker}: {str(e)}") from e
         finally:
             session.close()
     
@@ -131,11 +135,12 @@ class YfinanceClient:
             
             # Return the security id
             if not row:
-                raise ValueError("Sql return for get_security_id was empty")
+                raise ValueError(f"Security ID not found for ticker {ticker} with provider {provider}")
             return row[0]
-        
-        except Exception:
-            raise
+
+        except Exception as e:
+            logger.error(f"Failed to get security_id for {ticker}: {e}")
+            raise Exception(f"Failed to retrieve security_id for {ticker}: {str(e)}") from e
         finally:
             session.close()
     
@@ -230,14 +235,15 @@ class YfinanceClient:
                 'message': f"Insert OHLCV for {ticker}" if rows > 0 else f"{ticker} already in OHLCV DB"
             }
 
-        except Exception:
+        except Exception as e:
             # Rollback both the raw connection and session
             try:
                 raw_conn.rollback()
             except:
                 pass
             session.rollback()
-            raise
+            logger.error(f"Failed to insert OHLCV data for {ticker}: {e}")
+            raise Exception(f"OHLCV insertion failed for {ticker}: {str(e)}") from e
 
         finally:
             session.close()
@@ -485,9 +491,10 @@ class YfinanceClient:
                 'message': f"Inserted metadata for {ticker}" if rows > 0 else f"{ticker} already exists in metadata DB"
             }
 
-        except Exception:
+        except Exception as e:
             session.rollback()
-            raise
+            logger.error(f"Failed to insert metadata for {ticker}: {e}")
+            raise Exception(f"Metadata insertion failed for {ticker}: {str(e)}") from e
         finally:
             session.close()
 
@@ -547,7 +554,8 @@ class YfinanceClient:
             tickers = [row[0] for row in result.fetchall()]
             return tickers
 
-        except Exception:
-            raise
+        except Exception as e:
+            logger.error(f"Failed to get tickers from database: {e}")
+            raise Exception(f"Failed to retrieve tickers: {str(e)}") from e
         finally:
             session.close()
