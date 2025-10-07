@@ -1,0 +1,48 @@
+site_name: AlgoFlow Documentation
+site_url: https://algoflow-quant.github.io/algoflow
+repo_url: https://github.com/algoflow-quant/algoflow
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - tables
+
+nav:
+  - Home: index.md
+  - Data Pipeline:
+      - Overview: data_pipeline/overview.md
+      - DAGs:
+          - Historical: data_pipeline/dags/historical.md
+          - Daily: data_pipeline/dags/daily.md
+      - Components:
+          - Tickers: data_pipeline/components/tickers.md
+          - Validation: data_pipeline/components/validation.md
+          - YfinancePipeline: data_pipeline/components/yfinance_pipeline.md
+          - YfinanceClient: data_pipeline/components/yfinance_client.md
