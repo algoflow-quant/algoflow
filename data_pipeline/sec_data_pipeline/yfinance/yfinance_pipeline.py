@@ -24,7 +24,15 @@ class YfinancePipeline:
     - No retry logic & debug logging only (maybe error log) NO INFO LOGS!
     - Each method should download data for one stock (airflow handles parallel execution)
     """
-    
+
+    # Validation constants
+    TICKER_VALIDATION_TEST_DAYS = 21  # Calendar days to test ticker validity
+    MIN_TRADING_DAYS_FOR_VALIDATION = 10  # Minimum trading days required for valid ticker
+    MIN_OHLCV_ROWS_FOR_VALIDATION = 10  # Minimum rows required for OHLCV validation
+    MIN_PRICE_VALUE = 0.01  # Minimum valid price (prevents zero/negative prices)
+    MIN_STDDEV_VALUE = 0.01  # Minimum standard deviation (detects constant values)
+    MAX_TICKER_LENGTH = 5  # Maximum ticker symbol length
+
     def __init__(self) -> None:
 
         # Add headers to avoid 403 error (Forbidden, for ticker scraping)
@@ -262,7 +270,7 @@ class YfinancePipeline:
                  if ticker and str(ticker).strip()
                  and not str(ticker).startswith('CASH')
                  and not str(ticker).startswith('USD')
-                 and len(str(ticker).strip()) <= 5]  # Most tickers are 1-5 chars
+                 and len(str(ticker).strip()) <= self.MAX_TICKER_LENGTH]
         
         return tickers
     
@@ -318,10 +326,7 @@ class YfinancePipeline:
         )
 
         # Check if we got valid data with minimum trading days
-        # For 21 calendar days, we expect at least 10 trading days (accounting for weekends/holidays)
-        min_trading_days = 10  # Minimum required trading days to be considered valid
-
-        if data is not None and not data.empty and len(data) >= min_trading_days:
+        if data is not None and not data.empty and len(data) >= self.MIN_TRADING_DAYS_FOR_VALIDATION:
             return True
         else:
             return False
@@ -394,10 +399,10 @@ class YfinancePipeline:
                 gx.expectations.ExpectColumnValuesToNotBeNull(column="Volume"),
 
                 # 3. Positive price validation - no negative or zero prices
-                gx.expectations.ExpectColumnValuesToBeBetween(column="Open", min_value=0.01),
-                gx.expectations.ExpectColumnValuesToBeBetween(column="High", min_value=0.01),
-                gx.expectations.ExpectColumnValuesToBeBetween(column="Low", min_value=0.01),
-                gx.expectations.ExpectColumnValuesToBeBetween(column="Close", min_value=0.01),
+                gx.expectations.ExpectColumnValuesToBeBetween(column="Open", min_value=self.MIN_PRICE_VALUE),
+                gx.expectations.ExpectColumnValuesToBeBetween(column="High", min_value=self.MIN_PRICE_VALUE),
+                gx.expectations.ExpectColumnValuesToBeBetween(column="Low", min_value=self.MIN_PRICE_VALUE),
+                gx.expectations.ExpectColumnValuesToBeBetween(column="Close", min_value=self.MIN_PRICE_VALUE),
 
                 # 4. Volume validation - non-negative only (0 volume is valid)
                 gx.expectations.ExpectColumnValuesToBeBetween(column="Volume", min_value=0),
@@ -422,11 +427,11 @@ class YfinancePipeline:
                 ),
 
                 # 7. Data variability - no constant values (stddev > 0)
-                gx.expectations.ExpectColumnStdevToBeBetween(column="Close", min_value=0.01),
-                gx.expectations.ExpectColumnStdevToBeBetween(column="Volume", min_value=0.01),
+                gx.expectations.ExpectColumnStdevToBeBetween(column="Close", min_value=self.MIN_STDDEV_VALUE),
+                gx.expectations.ExpectColumnStdevToBeBetween(column="Volume", min_value=self.MIN_STDDEV_VALUE),
 
                 # 8. Minimum row count - at least 10 trading days
-                gx.expectations.ExpectTableRowCountToBeBetween(min_value=10),
+                gx.expectations.ExpectTableRowCountToBeBetween(min_value=self.MIN_OHLCV_ROWS_FOR_VALIDATION),
 
                 # 9. Unique dates - no duplicate timestamps
                 gx.expectations.ExpectColumnValuesToBeUnique(column="Date") if "Date" in df.columns else None,
@@ -468,11 +473,5 @@ class YfinancePipeline:
             # Restore stderr
             sys.stderr = old_stderr
 
-            # If validation setup fails, return error result
-            return {
-                'valid': False,
-                'total_checks': 0,
-                'passed': 0,
-                'failed': 0,
-                'failed_checks': [f"ValidationError: {str(e)}"]
-            }
+            # If validation setup fails, raise exception for Airflow to retry
+            raise Exception(f"OHLCV validation framework failed for {ticker}: {str(e)}") from e

@@ -3,9 +3,6 @@ from datetime import datetime, timedelta, date
 from typing import List, Dict, Any, Tuple
 from io import StringIO
 
-import sys
-sys.path.append('/opt/airflow/plugins')
-
 # Third-party imports
 import pandas as pd
 from airflow.decorators import dag, task #type: ignore
