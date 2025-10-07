@@ -6,6 +6,8 @@
 ![Python](https://img.shields.io/badge/python-3.9+-blue)
 ![Contributors](https://img.shields.io/github/contributors/algoflow-quant/algoflow)
 
+📚 **[View Documentation](https://algoflow-quant.github.io/algoflow)**
+
 ## Project Status
 
 ![Issues](https://img.shields.io/github/issues/algoflow-quant/AlgoFlow)
