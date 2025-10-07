@@ -25,7 +25,9 @@ class YfinanceClient:
                    or defaults to local dev database.
 
         Example:
+            ```python
             client = YfinanceClient("postgresql://user:pass@localhost:5432/sec_master_dev")
+            ```
         """
         # Set up connection
         self.engine = create_engine(db_url)
@@ -33,7 +35,7 @@ class YfinanceClient:
         
         
     # Security management methods    
-    def insert_security(self, ticker: str, groupings: List[str], provider: str = 'yfinance'):
+    def insert_security(self, ticker: str, groupings: List[str], provider: str = 'yfinance') -> Dict[str, Any]:
         """
         Insert a ticker symbol into the security_master.securities table.
 
@@ -43,20 +45,17 @@ class YfinanceClient:
             provider: Data provider name (default: 'yfinance')
 
         Returns:
-            dict: {
-                'success': bool,
-                'ticker': str,
-                'rows_affected': int,
-                'message': str
-            }
+            Dict with keys: success (bool), ticker (str), rows_affected (int), message (str)
 
         Raises:
             Exception: If database insertion fails
 
         Example:
+            ```python
             result = client.insert_security('AAPL', ['sp500', 'nasdaq'])
             if result['rows_affected'] > 0:
                 print("Inserted successfully")
+            ```
 
         Note:
             Uses ON CONFLICT DO NOTHING, so duplicate tickers return rowcount=0.
@@ -111,9 +110,11 @@ class YfinanceClient:
             int: The security_id if found, None if ticker doesn't exist
 
         Example:
+            ```python
             security_id = client.get_security_id('AAPL')
             if security_id:
                 print(f"AAPL has ID: {security_id}")
+            ```
 
         Note:
             This ID is used as foreign key in OHLCV and metadata tables.
@@ -145,7 +146,7 @@ class YfinanceClient:
             session.close()
     
     # Yfinance Schema storage
-    def insert_ohlcv(self, ticker: str, data: pd.DataFrame):
+    def insert_ohlcv(self, ticker: str, data: pd.DataFrame) -> Dict[str, Any]:
         """
         Insert OHLCV (Open, High, Low, Close, Volume) data for a single ticker.
 
@@ -155,21 +156,18 @@ class YfinanceClient:
                   Date can be either index or column.
 
         Returns:
-            dict: {
-                'success': bool,
-                'ticker': str,
-                'rows_affected': int,
-                'message': str
-            }
+            Dict with keys: success (bool), ticker (str), rows_affected (int), message (str)
 
         Raises:
             Exception: If ticker not found or insertion fails
 
         Example:
+            ```python
             import yfinance as yf
             df = yf.download('AAPL', start='2024-01-01', end='2024-12-31')
             result = client.insert_ohlcv('AAPL', df)
             print(f"Inserted/updated {result['rows_affected']} rows")
+            ```
 
         Note:
             Uses ON CONFLICT UPDATE to handle duplicate dates (updates existing records).
@@ -251,7 +249,7 @@ class YfinanceClient:
             
         
     
-    def insert_metadata(self, ticker: str, metadata: Dict):
+    def insert_metadata(self, ticker: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """
         Insert comprehensive financial metadata for a ticker.
 
@@ -265,20 +263,17 @@ class YfinanceClient:
                      - And many more (see schema for full list)
 
         Returns:
-            dict: {
-                'success': bool,
-                'ticker': str,
-                'rows_affected': int,
-                'message': str
-            }
+            Dict with keys: success (bool), ticker (str), rows_affected (int), message (str)
 
         Raises:
             Exception: If ticker not found or insertion fails
 
         Example:
-            metadata = pipeline.scrape_metadata(['AAPL'])
-            result = client.insert_metadata('AAPL', metadata['AAPL'])
+            ```python
+            metadata = pipeline.scrape_metadata('AAPL')
+            result = client.insert_metadata('AAPL', metadata)
             print(f"Rows affected: {result['rows_affected']}")
+            ```
 
         Note:
             Missing keys are stored as NULL. Uses ON CONFLICT UPDATE for existing records.
@@ -511,6 +506,7 @@ class YfinanceClient:
             List of ticker symbols
 
         Examples:
+            ```python
             # Get all tickers
             all_tickers = client.get_tickers()
 
@@ -519,6 +515,7 @@ class YfinanceClient:
 
             # Get both S&P 500 and NASDAQ tickers
             combined = client.get_tickers(['sp500', 'nasdaq'])
+            ```
         """
         session = self.Session()
 
