@@ -7,5 +7,5 @@ AlgoFlow is a web-based quantitative trading platform.
 ## Links
 
 - [Data Pipeline](data_pipeline/overview.md)
-- [API Reference](data_pipeline/api/yfinance_pipeline.md)
+- [API Reference](data_pipeline/components/yfinance_pipeline.md)
 - [GitHub](https://github.com/algoflow-quant/algoflow)
