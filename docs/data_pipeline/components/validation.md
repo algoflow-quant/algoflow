@@ -1,49 +1,33 @@
-# Data Validation
+# YfinanceValidation
 
-Great Expectations validation framework for OHLCV data quality.
+Validates ticker symbols and OHLCV data quality using yfinance test downloads and Great Expectations.
 
-## Validation Process
-
-```mermaid
-sequenceDiagram
-    participant DAG as Airflow DAG
-    participant Pipeline as YfinancePipeline
-    participant GX as Great Expectations
-    
-    DAG->>Pipeline: validate_ohlcv(df, ticker)
-    Pipeline->>GX: Run 18 checks
-    GX-->>Pipeline: Results
-    alt Validation Pass
-        Pipeline-->>DAG: Success
-    else Validation Fail
-        Pipeline-->>DAG: Raise Exception
-    end
-```
+!!! info "Component Separation"
+    This class handles validation only. For ticker lists see [YfinanceTickers](tickers.md), for data scraping see [YfinancePipeline](yfinance_pipeline.md).
 
 ## Validation Checks
 
-!!! check "Schema Validation"
-    - Required columns: Open, High, Low, Close, Volume
+| Category | Checks | Purpose |
+|----------|--------|---------|
+| Schema | Required columns (Open, High, Low, Close, Volume) | Ensure complete data structure |
+| Nulls | Zero NaN/null tolerance | Catch incomplete data |
+| Price Logic | High ≥ Low, Open/Close within range, all prices > $0.01 | Detect bad data or API errors |
+| Data Quality | Std dev > 0.01, min 10 rows, unique dates | Catch constant values and duplicates |
+| Volume | Non-negative (0 allowed) | Validate trading activity |
 
-!!! check "Null Checks"
-    - Zero tolerance for NaN/null values
+!!! info "Why 18 Checks?"
+    Schema (1) + Nulls (5) + Price bounds (4) + Price logic (4) + Data quality (3) + Unique dates (1) = 18 total checks
 
-!!! check "Price Logic"
-    - High ≥ Low
-    - Open/Close within High/Low range
-    - Prices > $0.01
+## How It Works
 
-!!! check "Data Quality"
-    - Standard deviation > 0.01 (detects constant values)
-    - Minimum 10 rows
-    - Unique dates (no duplicates)
+Runs 18 Great Expectations checks to catch API glitches, incomplete data, and bad values before they hit the database. Checks cover schema completeness, null values, price logic (High >= Low, Open/Close within bounds), data quality (stddev > 0.01, min 10 rows, unique dates), and reasonable values (prices > $0.01, volume >= 0).
 
-!!! check "Volume"
-    - Non-negative (0 allowed)
+Returns a dict with validation results including which checks passed/failed. If the Great Expectations framework itself fails, raises an exception for Airflow to retry.
+
+!!! warning "Validation Failures"
+    All failures raise exceptions - no silent errors. Airflow retries automatically with exponential backoff.
 
 ## Constants
-
-Defined in `YfinancePipeline` class:
 
 | Constant | Value | Purpose |
 |----------|-------|---------|
@@ -52,12 +36,16 @@ Defined in `YfinancePipeline` class:
 | `MIN_OHLCV_ROWS_FOR_VALIDATION` | 10 | Minimum rows for validation |
 | `MIN_PRICE_VALUE` | 0.01 | Minimum valid price |
 | `MIN_STDDEV_VALUE` | 0.01 | Minimum standard deviation |
-| `MAX_TICKER_LENGTH` | 5 | Maximum ticker symbol length |
 
-## Error Handling
+## Ticker Validation
 
-!!! warning "Validation Failures"
-    Validation failures raise exceptions for Airflow to retry. Failed validations are logged with specific check names.
+Each ticker is validated by downloading 21 calendar days of data (about 15 trading days). Valid tickers must return ≥10 trading days back. Catches delisted stocks, bad symbols, and API issues before bulk downloading.
 
-!!! tip "Debugging"
-    Check Airflow task logs for detailed validation failure messages with check names and row counts.
+!!! info "Why 21 Days?"
+    21 calendar days = ~15 trading days. Accounts for weekends, holidays, and newly listed stocks.
+
+## API Reference
+
+::: sec_data_pipeline.yfinance.yfinance_validation.YfinanceValidation
+    options:
+      show_source: true
