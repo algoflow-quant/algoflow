@@ -1,0 +1,24 @@
+# AlgoFlow Airflow Container
+# Extends apache/airflow:2.10.4-python3.10 with:
+# - PostgreSQL client for database operations and initialization
+# - Custom Python dependencies from requirements-airflow.txt (yfinance, pandas, great_expectations, loguru)
+# - Configured for parallel task execution with TaskFlow API
+#
+# Usage:
+#   docker compose -f infrastructure/docker-compose.data-pipeline.yml up -d
+
+FROM apache/airflow:2.10.4-python3.10
+
+USER root
+# Install PostgreSQL client for database creation and management
+RUN apt-get update && \
+    apt-get install -y postgresql-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+USER airflow
+# Copy requirements file specifically for Airflow
+COPY requirements-airflow.txt /tmp/requirements-airflow.txt
+
+# Install Python packages needed for DAGs (yfinance, pandas, great_expectations, loguru, etc.)
+RUN pip install --no-cache-dir -r /tmp/requirements-airflow.txt
