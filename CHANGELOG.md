@@ -1,3 +1,9 @@
+## v2.1.2 (2025-10-07)
+
+### Fix
+
+- **docs**: update mkdocs dependencies to fix autorefs compatibility
+
 ## v2.1.1 (2025-10-07)
 
 ### Fix
