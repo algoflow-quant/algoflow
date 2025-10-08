@@ -1,3 +1,9 @@
+## v2.2.0 (2025-10-08)
+
+### Feat
+
+- **frontend**: ran create-next-app and organized folders
+
 ## v2.1.4 (2025-10-07)
 
 ### Fix
