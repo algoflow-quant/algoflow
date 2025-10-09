@@ -10,7 +10,10 @@ Web-based quantitative trading platform with automated data pipelines and backte
 ## Components
 
 - **[Data Pipeline](data_pipeline/overview.md)** - Airflow-based securities data ingestion from yfinance
-- **[API Reference](data_pipeline/components/yfinance_pipeline.md)** - Complete pipeline and client documentation
+- **[YfinanceClient](data_pipeline/components/yfinance_client.md)** - Database operations and connection management
+- **[YfinancePipeline](data_pipeline/components/yfinance_pipeline.md)** - Data scraping orchestration
+- **[Tickers](data_pipeline/components/yfinance_tickers.md)** - Ticker discovery and registration
+- **[Validation](data_pipeline/components/yfinance_validation.md)** - Data quality assurance with Great Expectations
 
 ## Quick Links
 
