@@ -20,6 +20,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { BorderBeam } from "@/components/ui/border-beam"
 
 export function LoginForm({
   className,
@@ -53,7 +54,13 @@ export function LoginForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
+      <Card className="relative">
+        <BorderBeam
+          size={250}
+          duration={12}
+          colorFrom="var(--brand-blue)"
+          colorTo="var(--brand-blue-light)"
+        />
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
           <CardDescription>

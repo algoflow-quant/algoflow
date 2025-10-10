@@ -1,6 +1,7 @@
 import { InteractiveGridPattern } from "@/components/ui/interactive-grid-pattern"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { BorderBeam } from "@/components/ui/border-beam"
 import Link from "next/link"
 
 export default function WaitlistPendingPage() {
@@ -14,7 +15,13 @@ export default function WaitlistPendingPage() {
         squaresClassName="fill-brand-blue/40 stroke-brand-blue/60 hover:fill-brand-blue/70 hover:stroke-brand-blue"
       />
       <div className="relative z-10 w-full max-w-md">
-        <Card>
+        <Card className="relative">
+          <BorderBeam
+            size={250}
+            duration={12}
+            colorFrom="var(--brand-blue)"
+            colorTo="var(--brand-blue-light)"
+          />
           <CardHeader>
             <CardTitle>You're on the waitlist</CardTitle>
             <CardDescription>
