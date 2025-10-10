@@ -18,6 +18,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { BorderBeam } from "@/components/ui/border-beam"
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const [fullName, setFullName] = useState("")
@@ -67,7 +68,13 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
   if (success) {
     return (
-      <Card {...props}>
+      <Card {...props} className="relative">
+        <BorderBeam
+          size={250}
+          duration={12}
+          colorFrom="var(--brand-blue)"
+          colorTo="var(--brand-blue-light)"
+        />
         <CardHeader>
           <CardTitle>Account created!</CardTitle>
           <CardDescription>
@@ -90,7 +97,13 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   }
 
   return (
-    <Card {...props}>
+    <Card {...props} className="relative">
+      <BorderBeam
+        size={250}
+        duration={12}
+        colorFrom="var(--brand-blue)"
+        colorTo="var(--brand-blue-light)"
+      />
       <CardHeader>
         <CardTitle>Create your account</CardTitle>
         <CardDescription>
