@@ -1,0 +1,5 @@
+# Supabase Full Stack
+# Auth, Database, Storage, Realtime, and Studio
+
+include:
+  - supabase/docker-compose.yml
