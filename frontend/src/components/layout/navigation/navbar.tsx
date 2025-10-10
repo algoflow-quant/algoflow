@@ -26,7 +26,7 @@ const NavBar = () => {
         </div>
 
         {/* Center: Nav Links - Absolutely centered */}
-        <div className="hidden md:flex gap-2 absolute left-1/2 -translate-x-1/2">
+        <div className="hidden md:flex gap-4 absolute left-1/2 -translate-x-1/2">
           <NavLink href="/">Home</NavLink>
           <NavLink href="/pricing">Pricing</NavLink>
           <NavLink href="/about">About</NavLink>

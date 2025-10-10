@@ -15,7 +15,7 @@ import {
 
 export const AuthButton = () => {
   // Hardcoded for now - will be replaced with useUser() hook later
-  const isLoggedIn = true
+  const isLoggedIn = false
   const user = {
     name: "John Doe",
     email: "john@example.com",
@@ -32,10 +32,10 @@ export const AuthButton = () => {
 const LoginButtons = () => {
   return (
     <div className="flex items-center gap-3">
-      <Button variant="ghost" size="sm" asChild>
+      <Button variant="ghost" asChild>
         <Link href="/login">Login</Link>
       </Button>
-      <Button size="sm" className="rounded-full bg-brand-blue hover:bg-brand-blue-dark" asChild>
+      <Button className="rounded-full bg-brand-blue hover:bg-brand-blue-dark" asChild>
         <Link href="/register">Sign Up</Link>
       </Button>
     </div>
