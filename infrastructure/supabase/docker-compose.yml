@@ -531,5 +531,16 @@ services:
         "/app/bin/migrate && /app/bin/supavisor eval \"$$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
       ]
 
+  inbucket:
+    container_name: supabase-inbucket
+    image: inbucket/inbucket:stable
+    restart: unless-stopped
+    ports:
+      - "54324:9000"  # Web UI
+      - "54325:2500"  # SMTP
+    environment:
+      INBUCKET_WEB_ADDR: 0.0.0.0:9000
+      INBUCKET_SMTP_ADDR: 0.0.0.0:2500
+
 volumes:
   db-config:
