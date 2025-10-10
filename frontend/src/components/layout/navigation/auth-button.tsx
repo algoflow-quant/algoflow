@@ -1,16 +1,25 @@
 "use client"
 
-import React, { useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
-import { User, ChevronDown } from 'lucide-react'
+import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export const AuthButton = () => {
   // Hardcoded for now - will be replaced with useUser() hook later
-  const isLoggedIn = false
+  const isLoggedIn = true
   const user = {
     name: "John Doe",
     email: "john@example.com",
-    avatar: null // Will use avatar URL from Supabase later
+    avatar: null
   }
 
   if (isLoggedIn) {
@@ -23,67 +32,60 @@ export const AuthButton = () => {
 const LoginButtons = () => {
   return (
     <div className="flex items-center gap-3">
-      <Link
-        href="/login"
-        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        Login
-      </Link>
-      <Link
-        href="/register"
-        className="text-sm px-4 py-2 bg-brand-blue hover:bg-brand-blue-dark text-white rounded-full transition-colors"
-      >
-        Sign Up
-      </Link>
+      <Button variant="ghost" size="sm" asChild>
+        <Link href="/login">Login</Link>
+      </Button>
+      <Button size="sm" className="rounded-full bg-brand-blue hover:bg-brand-blue-dark" asChild>
+        <Link href="/register">Sign Up</Link>
+      </Button>
     </div>
   )
 }
 
 const UserMenu = ({ user }: { user: { name: string; email: string; avatar: string | null } }) => {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = React.useState(false)
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-accent transition-colors"
-      >
-        {user.avatar ? (
-          <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-brand-blue flex items-center justify-center">
-            <User className="w-4 h-4 text-white" />
-          </div>
-        )}
-        <ChevronDown className="w-4 h-4 text-muted-foreground" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg py-1 z-50">
-          <div className="px-4 py-2 border-b border-border">
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="rounded-full flex items-center gap-2">
+          {user.avatar ? (
+            <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-brand-blue flex items-center justify-center">
+              <User className="w-4 h-4 text-white" />
+            </div>
+          )}
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>
+          <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium">{user.name}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
-          <Link
-            href="/settings"
-            className="block px-4 py-2 text-sm hover:bg-accent transition-colors"
-          >
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/settings" className="cursor-pointer">
+            <Settings className="mr-2 h-4 w-4" />
             Settings
           </Link>
-          <Link
-            href="/lab"
-            className="block px-4 py-2 text-sm hover:bg-accent transition-colors"
-          >
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/lab" className="cursor-pointer">
+            <User className="mr-2 h-4 w-4" />
             Go to Lab
           </Link>
-          <button
-            className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-accent transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      )}
-    </div>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="text-destructive cursor-pointer">
+          <LogOut className="mr-2 h-4 w-4" />
+          Logout
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
