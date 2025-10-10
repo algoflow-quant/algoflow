@@ -9,7 +9,7 @@ export const NavLink = ({ href, children }: { href: string; children: React.Reac
   const isActive = pathname === href
 
   return (
-    <Link href={href} className="relative px-4 py-2 text-center min-w-[100px]">
+    <Link href={href} className="relative px-6 py-2 text-base inline-block min-w-[100px] text-center">
       {isActive && (
         <motion.div
           layoutId="navbar-pill"
