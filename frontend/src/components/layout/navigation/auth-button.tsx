@@ -1,8 +1,9 @@
 "use client"
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,15 +15,31 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 export const AuthButton = () => {
-  // Hardcoded for now - will be replaced with useUser() hook later
-  const isLoggedIn = false
-  const user = {
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: null
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      setLoading(false)
+    }
+
+    getUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  if (loading) {
+    return null
   }
 
-  if (isLoggedIn) {
+  if (user) {
     return <UserMenu user={user} />
   }
 
@@ -42,15 +59,21 @@ const LoginButtons = () => {
   )
 }
 
-const UserMenu = ({ user }: { user: { name: string; email: string; avatar: string | null } }) => {
+const UserMenu = ({ user }: { user: any }) => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const supabase = createClient()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/'
+  }
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="rounded-full flex items-center gap-2">
-          {user.avatar ? (
-            <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
+          {user.user_metadata?.avatar_url ? (
+            <img src={user.user_metadata.avatar_url} alt={user.email} className="w-8 h-8 rounded-full" />
           ) : (
             <div className="w-8 h-8 rounded-full bg-brand-blue flex items-center justify-center">
               <User className="w-4 h-4 text-white" />
@@ -62,7 +85,7 @@ const UserMenu = ({ user }: { user: { name: string; email: string; avatar: strin
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{user.name}</p>
+            <p className="text-sm font-medium">{user.user_metadata?.full_name || 'User'}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
@@ -80,7 +103,7 @@ const UserMenu = ({ user }: { user: { name: string; email: string; avatar: strin
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive cursor-pointer">
+        <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           Logout
         </DropdownMenuItem>
