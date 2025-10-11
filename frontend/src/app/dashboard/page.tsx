@@ -1,5 +1,3 @@
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
@@ -12,17 +10,7 @@ import {
 
 import data from "./data.json"
 
-export default async function LabPage() {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/login")
-  }
-
+export default function Page() {
   return (
     <SidebarProvider
       style={
@@ -32,7 +20,7 @@ export default async function LabPage() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={user} />
+      <AppSidebar variant="inset" />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">
