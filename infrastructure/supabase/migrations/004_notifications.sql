@@ -81,10 +81,6 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(use
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
 
--- =============================================
--- ADMIN MESSAGING SYSTEM
--- =============================================
-
 -- Function to check if user is admin
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN AS $$
@@ -96,7 +92,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function for admins to send notifications to everyone
+GRANT EXECUTE ON FUNCTION public.is_admin TO authenticated;
+
+-- Admin function to send notification to all users
 CREATE OR REPLACE FUNCTION public.admin_send_to_all(
   p_title TEXT,
   p_message TEXT,
@@ -113,15 +111,9 @@ BEGIN
     RAISE EXCEPTION 'Only admins can send notifications to all users';
   END IF;
 
-  -- Send notification to all users
-  FOR v_user IN SELECT id FROM public.profiles LOOP
-    PERFORM public.create_notification(
-      v_user.id,
-      p_title,
-      p_message,
-      p_type,
-      p_link
-    );
+  -- Send notification to each user
+  FOR v_user IN SELECT id FROM auth.users LOOP
+    PERFORM public.create_notification(v_user.id, p_title, p_message, p_type, p_link);
     v_count := v_count + 1;
   END LOOP;
 
@@ -129,7 +121,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function for admins to send notifications to specific users
+GRANT EXECUTE ON FUNCTION public.admin_send_to_all TO authenticated;
+
+-- Admin function to send notification to specific users
 CREATE OR REPLACE FUNCTION public.admin_send_to_users(
   p_user_ids UUID[],
   p_title TEXT,
@@ -144,18 +138,12 @@ DECLARE
 BEGIN
   -- Check if caller is admin
   IF NOT public.is_admin(auth.uid()) THEN
-    RAISE EXCEPTION 'Only admins can send notifications to specific users';
+    RAISE EXCEPTION 'Only admins can send notifications to users';
   END IF;
 
-  -- Send notification to specified users
+  -- Send notification to each specified user
   FOREACH v_user_id IN ARRAY p_user_ids LOOP
-    PERFORM public.create_notification(
-      v_user_id,
-      p_title,
-      p_message,
-      p_type,
-      p_link
-    );
+    PERFORM public.create_notification(v_user_id, p_title, p_message, p_type, p_link);
     v_count := v_count + 1;
   END LOOP;
 
@@ -163,7 +151,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function for admins to send notifications by role
+GRANT EXECUTE ON FUNCTION public.admin_send_to_users TO authenticated;
+
+-- Admin function to send notification to users with specific role
 CREATE OR REPLACE FUNCTION public.admin_send_to_role(
   p_role TEXT,
   p_title TEXT,
@@ -181,15 +171,9 @@ BEGIN
     RAISE EXCEPTION 'Only admins can send notifications by role';
   END IF;
 
-  -- Send notification to all users with specified role
+  -- Send notification to each user with the specified role
   FOR v_user IN SELECT id FROM public.profiles WHERE role = p_role LOOP
-    PERFORM public.create_notification(
-      v_user.id,
-      p_title,
-      p_message,
-      p_type,
-      p_link
-    );
+    PERFORM public.create_notification(v_user.id, p_title, p_message, p_type, p_link);
     v_count := v_count + 1;
   END LOOP;
 
@@ -197,8 +181,4 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.is_admin TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_send_to_all TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_send_to_users TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_send_to_role TO authenticated;

@@ -5,7 +5,9 @@
 -- Profiles table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
   name TEXT,
+  username TEXT UNIQUE,
   bio TEXT,
   avatar_url TEXT,
   role TEXT DEFAULT 'waitlist' CHECK (role IN ('waitlist', 'free', 'standard', 'premium', 'team', 'enterprise', 'admin')),
@@ -20,6 +22,10 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
+
+CREATE POLICY "Users can search profiles for invitations"
+  ON public.profiles FOR SELECT
+  USING (true);
 
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
@@ -43,10 +49,12 @@ CREATE TRIGGER update_profiles_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, name, avatar_url, role)
+  INSERT INTO public.profiles (id, email, name, username, avatar_url, role)
   VALUES (
     NEW.id,
+    NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    NEW.raw_user_meta_data->>'username',
     NEW.raw_user_meta_data->>'avatar_url',
     'waitlist'
   );
