@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import {
   IconCreditCard,
   IconDotsVertical,
@@ -29,12 +30,29 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/contexts/AuthContext"
+import { getUnreadCount } from "@/lib/api/notifications"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
 
 export function NavUser({ user }: { user?: User }) {
   const { isMobile } = useSidebar()
   const { signOut } = useAuth()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    loadUnreadCount()
+    const interval = setInterval(loadUnreadCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const loadUnreadCount = async () => {
+    try {
+      const count = await getUnreadCount()
+      setUnreadCount(count)
+    } catch (error) {
+      console.error('Error loading unread count:', error)
+    }
+  }
 
   const handleLogout = async () => {
     await signOut()
@@ -59,10 +77,15 @@ export function NavUser({ user }: { user?: User }) {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={avatarUrl} alt={userName} />
-                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarImage src={avatarUrl} alt={userName} />
+                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                </Avatar>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-destructive border-2 border-background" />
+                )}
+              </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{userName}</span>
                 <span className="text-muted-foreground truncate text-xs">
@@ -80,10 +103,15 @@ export function NavUser({ user }: { user?: User }) {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={avatarUrl} alt={userName} />
-                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src={avatarUrl} alt={userName} />
+                    <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                  </Avatar>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-destructive border-2 border-background" />
+                  )}
+                </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{userName}</span>
                   <span className="text-muted-foreground truncate text-xs">
@@ -101,15 +129,20 @@ export function NavUser({ user }: { user?: User }) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/lab/settings?tab=billing" className="cursor-pointer">
-                  <IconCreditCard />
-                  Billing
+                <Link href="/lab/notifications" className="cursor-pointer">
+                  <IconNotification />
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/lab/settings?tab=notifications" className="cursor-pointer">
-                  <IconNotification />
-                  Notifications
+                <Link href="/lab/settings?tab=billing" className="cursor-pointer">
+                  <IconCreditCard />
+                  Billing
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
