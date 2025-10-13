@@ -22,6 +22,7 @@ import { BorderBeam } from "@/components/ui/border-beam"
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const [fullName, setFullName] = useState("")
+  const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -54,6 +55,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         options: {
           data: {
             full_name: fullName,
+            username: username,
           },
         },
       })
@@ -138,6 +140,21 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                 required
                 disabled={loading}
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="username">Username</FieldLabel>
+              <Input
+                id="username"
+                type="text"
+                placeholder="johndoe"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <FieldDescription>
+                Your unique username for the platform
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="email">Email</FieldLabel>
