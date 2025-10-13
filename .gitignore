@@ -1,5 +1,5 @@
 # Virtual Environment
-backend/venv/
+data_pipeline/venv/
 .venv/
 .env
 
@@ -12,3 +12,6 @@ __pycache__/
 # Jupyter Notebook
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
+
+# Pytest
+.coverage
