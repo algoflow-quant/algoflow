@@ -1,9 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,27 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export const AuthButton = () => {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      setLoading(false)
-    }
-
-    getUser()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+  const { user, loading } = useAuth()
 
   if (loading) {
     return null
@@ -59,13 +43,12 @@ const LoginButtons = () => {
   )
 }
 
-const UserMenu = ({ user }: { user: any }) => {
+const UserMenu = ({ user }: { user: SupabaseUser }) => {
   const [isOpen, setIsOpen] = React.useState(false)
-  const supabase = createClient()
+  const { signOut } = useAuth()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = '/'
+    await signOut()
   }
 
   return (
@@ -73,7 +56,13 @@ const UserMenu = ({ user }: { user: any }) => {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="rounded-full flex items-center gap-2">
           {user.user_metadata?.avatar_url ? (
-            <img src={user.user_metadata.avatar_url} alt={user.email} className="w-8 h-8 rounded-full" />
+            <Image
+              src={user.user_metadata.avatar_url}
+              alt={user.email || 'User avatar'}
+              width={32}
+              height={32}
+              className="rounded-full"
+            />
           ) : (
             <div className="w-8 h-8 rounded-full bg-brand-blue flex items-center justify-center">
               <User className="w-4 h-4 text-white" />

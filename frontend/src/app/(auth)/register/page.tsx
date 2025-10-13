@@ -1,4 +1,4 @@
-import { SignupForm } from "@/components/signup-form"
+import { SignupForm } from "@/components/auth/signup-form"
 import { InteractiveGridPattern } from "@/components/ui/interactive-grid-pattern"
 
 export default function RegisterPage() {

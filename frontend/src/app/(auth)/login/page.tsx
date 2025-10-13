@@ -1,4 +1,4 @@
-import { LoginForm } from "@/components/login-form"
+import { LoginForm } from "@/components/auth/login-form"
 import { InteractiveGridPattern } from "@/components/ui/interactive-grid-pattern"
 
 export default function LoginPage() {

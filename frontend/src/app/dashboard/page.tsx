@@ -1,8 +1,8 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
-import { DataTable } from "@/components/data-table"
-import { SectionCards } from "@/components/section-cards"
-import { SiteHeader } from "@/components/site-header"
+import { AppSidebar } from "@/components/platform/app-sidebar"
+import { ChartAreaInteractive } from "@/components/platform/chart-area-interactive"
+import { DataTable } from "@/components/platform/data-table"
+import { SectionCards } from "@/components/marketing/section-cards"
+import { SiteHeader } from "@/components/layout/site-header"
 import {
   SidebarInset,
   SidebarProvider,

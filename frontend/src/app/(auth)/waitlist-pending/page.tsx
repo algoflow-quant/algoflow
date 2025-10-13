@@ -23,7 +23,7 @@ export default function WaitlistPendingPage() {
             colorTo="var(--brand-blue-light)"
           />
           <CardHeader>
-            <CardTitle>You're on the waitlist</CardTitle>
+            <CardTitle>You&apos;re on the waitlist</CardTitle>
             <CardDescription>
               Your account is pending approval
             </CardDescription>
@@ -33,7 +33,7 @@ export default function WaitlistPendingPage() {
               Thank you for signing up for AlgoFlow! Your account has been created and is currently pending approval.
             </p>
             <p className="text-sm text-muted-foreground">
-              We'll notify you via email once your account has been approved and you can start building quantitative trading strategies.
+              We&apos;ll notify you via email once your account has been approved and you can start building quantitative trading strategies.
             </p>
             <div className="pt-4">
               <Button variant="outline" className="w-full" asChild>
