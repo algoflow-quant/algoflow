@@ -74,13 +74,7 @@ export function canModifyProjectSync(project: Project, userId: string, isTeamOwn
 export async function getUserTeams() {
   const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from('teams')
-    .select(`
-      *,
-      team_members!inner(role)
-    `)
-    .order('created_at', { ascending: false })
+  const { data, error } = await supabase.rpc('get_user_teams')
 
   if (error) throw error
   return data as Team[]
@@ -179,12 +173,20 @@ export async function getTeamMembers(teamId: string) {
     .from('team_members')
     .select(`
       *,
-      user:auth.users(id, email, raw_user_meta_data)
+      profiles!user_id (
+        id,
+        name,
+        username,
+        email,
+        avatar_url,
+        role
+      )
     `)
     .eq('team_id', teamId)
+    .order('created_at', { ascending: true })
 
   if (error) throw error
-  return data
+  return data as (TeamMember & { profiles: { id: string; name: string | null; username: string | null; email: string | null; avatar_url: string | null; role: string } })[]
 }
 
 export async function addTeamMember(teamId: string, userId: string, role: 'admin' | 'member' = 'member') {
@@ -205,13 +207,65 @@ export async function addTeamMember(teamId: string, userId: string, role: 'admin
 }
 
 export async function removeTeamMember(teamId: string, userId: string) {
+  const response = await fetch('/api/teams/remove-member', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      teamId,
+      userId
+    })
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to remove member')
+  }
+
+  return data
+}
+
+export async function inviteTeamMember(teamId: string, teamName: string, identifier: string, identifierType: 'email' | 'username') {
+  const response = await fetch('/api/teams/invite', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      teamId,
+      teamName,
+      identifier,
+      identifierType
+    })
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to send invitation')
+  }
+
+  return data.invitationId
+}
+
+export async function acceptTeamInvitation(invitationId: string) {
   const supabase = createClient()
 
-  const { error } = await supabase
-    .from('team_members')
-    .delete()
-    .eq('team_id', teamId)
-    .eq('user_id', userId)
+  const { error } = await supabase.rpc('accept_team_invitation', {
+    invitation_id: invitationId
+  })
+
+  if (error) throw error
+}
+
+export async function declineTeamInvitation(invitationId: string) {
+  const supabase = createClient()
+
+  const { error } = await supabase.rpc('decline_team_invitation', {
+    invitation_id: invitationId
+  })
 
   if (error) throw error
 }

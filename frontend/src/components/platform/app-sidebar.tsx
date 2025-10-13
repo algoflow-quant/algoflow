@@ -50,6 +50,7 @@ import { CreateTeamDialog } from "@/components/platform/team/create-team-dialog"
 import { CreateProjectDialog } from "@/components/platform/project/create-project-dialog"
 import { RenameTeamDialog } from "@/components/platform/team/rename-team-dialog"
 import { RenameProjectDialog } from "@/components/platform/project/rename-project-dialog"
+import { TeamMembersSection } from "@/components/platform/team/team-members-section"
 
 export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user?: any }) {
   const router = useRouter()
@@ -276,16 +277,16 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
                 <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <SidebarMenuButton className="h-auto py-3 hover:bg-brand-blue/10 flex-1">
-                        <div className="flex items-center gap-3 w-full">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-blue/10 text-brand-blue font-semibold text-sm">
+                      <SidebarMenuButton className="h-auto py-3 hover:bg-brand-blue/10 flex-1 group-data-[collapsible=icon]:justify-center">
+                        <div className="flex items-center gap-3 w-full group-data-[collapsible=icon]:w-auto">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-blue/10 text-brand-blue font-semibold text-sm flex-shrink-0">
                             {selectedTeam ? (
                               selectedTeam.name.slice(0, 2).toUpperCase()
                             ) : (
                               <IconPlus className="!size-5" />
                             )}
                           </div>
-                          <div className="flex flex-col items-start flex-1 min-w-0">
+                          <div className="flex flex-col items-start flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
                             <span className="text-sm font-semibold truncate">
                               {selectedTeam?.name || 'Select Team'}
                             </span>
@@ -293,7 +294,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
                               {selectedTeam ? 'Active workspace' : 'Choose a team'}
                             </span>
                           </div>
-                          <IconChevronDown className="!size-4 ml-auto flex-shrink-0" />
+                          <IconChevronDown className="!size-4 ml-auto flex-shrink-0 group-data-[collapsible=icon]:hidden" />
                         </div>
                       </SidebarMenuButton>
                     </DropdownMenuTrigger>
@@ -329,7 +330,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
                   {selectedTeam && isOwner && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <button className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-brand-blue/10 transition-colors">
+                        <button className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-brand-blue/10 transition-colors group-data-[collapsible=icon]:hidden">
                           <IconDotsVertical className="!size-4 text-muted-foreground" />
                         </button>
                       </DropdownMenuTrigger>
@@ -358,6 +359,16 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
+
+        {/* Team Members Section */}
+        {selectedTeam && (
+          <TeamMembersSection
+            teamId={selectedTeam.id}
+            teamName={selectedTeam.name}
+            currentUserId={user?.id || ''}
+            isOwner={isOwner}
+          />
+        )}
 
         {/* Projects under team */}
         <SidebarGroup>

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { IconCheck, IconTrash, IconInfoCircle, IconCircleCheck, IconAlertTriangle, IconAlertCircle, IconBell } from "@tabler/icons-react"
+import { useSearchParams } from "next/navigation"
+import { IconCheck, IconTrash, IconInfoCircle, IconCircleCheck, IconAlertTriangle, IconAlertCircle, IconBell, IconX } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ShineBorder } from "@/components/ui/shine-border"
@@ -15,6 +16,7 @@ import {
   deleteAllRead,
   type Notification,
 } from "@/lib/api/notifications"
+import { acceptTeamInvitation, declineTeamInvitation } from "@/lib/api/teams"
 import { formatDistanceToNow } from "date-fns"
 
 interface NotificationsPanelProps {
@@ -24,6 +26,8 @@ interface NotificationsPanelProps {
 export function NotificationsPanel({ onNotificationRead }: NotificationsPanelProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [processingInvite, setProcessingInvite] = useState<string | null>(null)
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     loadNotifications()
@@ -38,6 +42,37 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleAcceptInvitation = async (invitationId: string, notificationId: string) => {
+    setProcessingInvite(invitationId)
+    try {
+      await acceptTeamInvitation(invitationId)
+      await handleDelete(notificationId)
+      window.location.reload()
+    } catch (error: any) {
+      alert(error.message || 'Failed to accept invitation')
+    } finally {
+      setProcessingInvite(null)
+    }
+  }
+
+  const handleDeclineInvitation = async (invitationId: string, notificationId: string) => {
+    setProcessingInvite(invitationId)
+    try {
+      await declineTeamInvitation(invitationId)
+      await handleDelete(notificationId)
+    } catch (error: any) {
+      alert(error.message || 'Failed to decline invitation')
+    } finally {
+      setProcessingInvite(null)
+    }
+  }
+
+  const extractInvitationId = (link: string | null): string | null => {
+    if (!link) return null
+    const match = link.match(/invitation=([a-f0-9-]+)/)
+    return match ? match[1] : null
   }
 
   const handleMarkAsRead = async (notificationId: string) => {
@@ -242,18 +277,55 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
                         addSuffix: true,
                       })}
                     </span>
-                    {notification.link && (
-                      <>
-                        <span>•</span>
-                        <Link
-                          href={notification.link}
-                          className="text-brand-blue hover:underline font-medium"
-                          onClick={() => !notification.read && handleMarkAsRead(notification.id)}
-                        >
-                          View details →
-                        </Link>
-                      </>
-                    )}
+                    {(() => {
+                      const invitationId = extractInvitationId(notification.link || null)
+
+                      if (invitationId && notification.title === 'Team Invitation') {
+                        return (
+                          <>
+                            <span>•</span>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="h-6 px-3 text-xs"
+                                onClick={() => handleAcceptInvitation(invitationId, notification.id)}
+                                disabled={processingInvite === invitationId}
+                              >
+                                <IconCheck className="h-3 w-3 mr-1" />
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-3 text-xs"
+                                onClick={() => handleDeclineInvitation(invitationId, notification.id)}
+                                disabled={processingInvite === invitationId}
+                              >
+                                <IconX className="h-3 w-3 mr-1" />
+                                Decline
+                              </Button>
+                            </div>
+                          </>
+                        )
+                      }
+
+                      if (notification.link) {
+                        return (
+                          <>
+                            <span>•</span>
+                            <Link
+                              href={notification.link}
+                              className="text-brand-blue hover:underline font-medium"
+                              onClick={() => !notification.read && handleMarkAsRead(notification.id)}
+                            >
+                              View details →
+                            </Link>
+                          </>
+                        )
+                      }
+
+                      return null
+                    })()}
                   </div>
                 </div>
               </div>
