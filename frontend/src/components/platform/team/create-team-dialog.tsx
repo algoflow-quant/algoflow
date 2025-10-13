@@ -35,7 +35,7 @@ export function CreateTeamDialog({ open, onOpenChange, onCreateTeam }: CreateTea
       setName("")
       setDescription("")
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       // Error is handled by parent
     } finally {
       setLoading(false)

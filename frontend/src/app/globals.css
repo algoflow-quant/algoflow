@@ -92,7 +92,9 @@
   /* AlgoFlow Brand Colors - consistent across light/dark */
   --brand-blue: oklch(0.55 0.15 250);        /* Main brand blue */
   --brand-blue-light: oklch(0.65 0.12 250);  /* Lighter shade */
-  --brand-blue-dark: oklch(0.45 0.18 250);   /* Darker shade */   --background: oklch(1 0 0);   --foreground: oklch(0.141 0.005 285.823);
+  --brand-blue-dark: oklch(0.45 0.18 250);   /* Darker shade */
+  --header-bg: 255 255 255;                  /* Header background RGB - white for light mode */
+  --background: oklch(1 0 0);   --foreground: oklch(0.141 0.005 285.823);
 }
 
 .dark {
@@ -127,6 +129,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
+  --header-bg: 10 15 19;                     /* Header background RGB - same for dark */
 }
 
 @layer base {

@@ -9,7 +9,8 @@ import {
 import { IconFolder } from "@tabler/icons-react"
 
 export default function ProjectPage({ params }: { params: Promise<{ team: string; project: string }> }) {
-  const resolvedParams = use(params)
+  // Resolve params for future use
+  use(params)
 
   return (
     <div className="flex flex-col h-full">

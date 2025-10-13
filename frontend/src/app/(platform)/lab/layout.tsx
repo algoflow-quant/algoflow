@@ -31,11 +31,11 @@ export default async function LabLayout({
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" user={user} />
-      <SidebarInset>
+      <AppSidebar user={user} />
+      <SidebarInset className="p-0">
         <SiteHeader />
-        <div className="flex flex-1 flex-col">
-          <div className="@container/main flex flex-1 flex-col gap-2">
+        <div className="flex flex-1 flex-col p-2">
+          <div className="@container/main flex flex-1 flex-col overflow-hidden border-2 border-brand-blue/20 rounded-lg">
             {children}
           </div>
         </div>

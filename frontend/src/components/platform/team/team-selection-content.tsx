@@ -64,9 +64,9 @@ export function TeamSelectionContent() {
       // Dispatch event to update sidebar
       window.dispatchEvent(new Event('teamCreated'))
       router.push(`/lab/${newTeam.id}`)
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error creating team:", err)
-      setError(err.message || "Failed to create team")
+      setError(err instanceof Error ? err.message : String(err) || "Failed to create team")
     } finally {
       setCreating(false)
     }
@@ -74,7 +74,7 @@ export function TeamSelectionContent() {
 
   if (loading) {
     return (
-      <div className="relative flex items-center justify-center flex-1 p-6 overflow-hidden bg-gradient-to-br from-background via-brand-blue/20 to-background">
+      <div className="relative flex items-center justify-center flex-1 overflow-hidden bg-gradient-to-br from-background via-brand-blue/20 to-background">
         <FlickeringGrid
           squareSize={4}
           gridGap={6}
@@ -93,19 +93,19 @@ export function TeamSelectionContent() {
   }
 
   return (
-    <div className="relative flex items-center justify-center flex-1 p-6 overflow-hidden bg-gradient-to-br from-background via-brand-blue/20 to-background">
+    <div className="relative flex items-center justify-center flex-1 overflow-hidden bg-gradient-to-br from-background via-brand-blue/20 to-background">
       <FlickeringGrid
         squareSize={4}
         gridGap={6}
         color="rgb(60, 160, 255)"
         maxOpacity={0.8}
         flickerChance={0.3}
-        className="absolute inset-0 w-full h-full [mask-image:radial-gradient(1000px_circle_at_center,white,transparent)]"
+        className="absolute -inset-px w-[calc(100%+2px)] h-[calc(100%+2px)] [mask-image:radial-gradient(1000px_circle_at_center,white,transparent)]"
       />
 
       <div className="relative w-full max-w-lg z-10">
         {!showCreateForm ? (
-          <Card className="relative">
+          <Card className="relative overflow-hidden">
             <BorderBeam
               size={250}
               duration={12}
@@ -160,7 +160,7 @@ export function TeamSelectionContent() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="relative">
+          <Card className="relative overflow-hidden">
             <BorderBeam
               size={250}
               duration={12}

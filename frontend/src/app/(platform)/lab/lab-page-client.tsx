@@ -1,9 +1,9 @@
 "use client"
 
 import type { User } from "@supabase/supabase-js"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SiteHeader } from "@/components/site-header"
-import { TeamSelectionContent } from "@/components/team-selection-content"
+import { AppSidebar } from "@/components/platform/app-sidebar"
+import { SiteHeader } from "@/components/layout/site-header"
+import { TeamSelectionContent } from "@/components/platform/team/team-selection-content"
 import {
   SidebarInset,
   SidebarProvider,

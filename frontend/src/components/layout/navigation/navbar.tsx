@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
 import NavLink from '@/components/layout/navigation/navlink'
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
@@ -22,7 +23,7 @@ const NavBar = () => {
 
         {/* Left: Logo */}
         <div className="flex items-center min-w-[120px]">
-          <a href="/" className="font-bold text-xl">AlgoFlow</a>
+          <Link href="/" className="font-bold text-xl">AlgoFlow</Link>
         </div>
 
         {/* Center: Nav Links - Absolutely centered */}

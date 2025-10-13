@@ -353,7 +353,7 @@ export interface ProjectRun {
   id: string
   project_id: string
   run_type: 'backtest' | 'paper_trade' | 'live_trade'
-  results?: any
+  results?: Record<string, unknown>
   total_return?: number
   sharpe_ratio?: number
   max_drawdown?: number

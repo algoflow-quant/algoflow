@@ -44,7 +44,7 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
       setType("strategy")
       setDescription("")
       onOpenChange(false)
-    } catch (error) {
+    } catch {
       // Error is handled by parent
     } finally {
       setLoading(false)

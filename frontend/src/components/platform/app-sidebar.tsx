@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
+import type { User } from "@supabase/supabase-js"
 import {
   IconBook,
   IconSchool,
@@ -52,7 +53,7 @@ import { RenameTeamDialog } from "@/components/platform/team/rename-team-dialog"
 import { RenameProjectDialog } from "@/components/platform/project/rename-project-dialog"
 import { TeamMembersSection } from "@/components/platform/team/team-members-section"
 
-export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user?: any }) {
+export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user?: User }) {
   const router = useRouter()
   const pathname = usePathname()
   const [teams, setTeams] = React.useState<Team[]>([])
@@ -72,7 +73,6 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
         const userTeams = await getUserTeams()
         setTeams(userTeams)
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error('Error fetching teams:', error)
       } finally {
         setLoading(false)
@@ -121,7 +121,6 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
         const ownerStatus = await isTeamOwner(selectedTeam.id)
         setIsOwner(ownerStatus)
       } catch (error) {
-        // eslint-disable-next-line no-console
         console.error('Error fetching projects:', error)
       }
     }
@@ -143,8 +142,8 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
       setTeams([...teams, newTeam])
       setSelectedTeam(newTeam)
       router.push(`/lab/${newTeam.id}`)
-    } catch (error: any) {
-      alert(error.message || 'Failed to create team')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to create team')
       throw error
     }
   }
@@ -161,13 +160,13 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
       const newProject = await createProject(selectedTeam.id, {
         name,
         description,
-        type: type as any,
+        type: type as 'strategy' | 'backtest' | 'research' | 'data_analysis',
       })
       setProjects([...projects, newProject])
       // Navigate to the new project
       router.push(`/lab/${selectedTeam.id}/${newProject.id}`)
-    } catch (error: any) {
-      alert(error.message || 'Failed to create project')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to create project')
       throw error
     }
   }
@@ -179,8 +178,8 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
       const updatedTeam = await updateTeam(selectedTeam.id, { name, description })
       setTeams(teams.map(t => t.id === updatedTeam.id ? updatedTeam : t))
       setSelectedTeam(updatedTeam)
-    } catch (error: any) {
-      alert(error.message || 'Failed to rename team')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to rename team')
       throw error
     }
   }
@@ -194,8 +193,8 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
       setTeams(teams.filter(t => t.id !== selectedTeam.id))
       setSelectedTeam(null)
       router.push('/lab')
-    } catch (error: any) {
-      alert(error.message || 'Failed to delete team')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to delete team')
     }
   }
 
@@ -203,8 +202,8 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
     try {
       const updatedProject = await updateProject(projectId, { name, description })
       setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p))
-    } catch (error: any) {
-      alert(error.message || 'Failed to rename project')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to rename project')
       throw error
     }
   }
@@ -219,8 +218,8 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
       if (pathname === `/lab/${selectedTeam?.id}/${projectId}`) {
         router.push(`/lab/${selectedTeam?.id}`)
       }
-    } catch (error: any) {
-      alert(error.message || 'Failed to delete project')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to delete project')
     }
   }
 

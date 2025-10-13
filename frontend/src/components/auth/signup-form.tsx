@@ -62,7 +62,7 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
       if (error) {
         console.error("Signup error:", error)
-        setError(error.message || error.toString() || "Failed to sign up. Please check your connection.")
+        setError(error instanceof Error ? error.message : String(error) || "Failed to sign up. Please check your connection.")
         setLoading(false)
       } else {
         console.log("Signup success:", data)

@@ -97,7 +97,7 @@ export function AdminMessageForm({ onSuccess }: { onSuccess?: () => void }) {
 
         <div className="space-y-2">
           <Label htmlFor="send-to">Send To</Label>
-          <Select value={sendTo} onValueChange={(v) => setSendTo(v as any)}>
+          <Select value={sendTo} onValueChange={(v) => setSendTo(v as "all" | "role" | "specific")}>
             <SelectTrigger id="send-to">
               <SelectValue />
             </SelectTrigger>
@@ -166,7 +166,7 @@ export function AdminMessageForm({ onSuccess }: { onSuccess?: () => void }) {
 
         <div className="space-y-2">
           <Label htmlFor="type">Type</Label>
-          <Select value={type} onValueChange={(v) => setType(v as any)}>
+          <Select value={type} onValueChange={(v) => setType(v as "info" | "success" | "warning" | "error")}>
             <SelectTrigger id="type">
               <SelectValue />
             </SelectTrigger>

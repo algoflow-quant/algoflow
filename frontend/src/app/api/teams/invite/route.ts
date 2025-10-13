@@ -54,10 +54,10 @@ export async function POST(request: NextRequest) {
       success: true,
       invitationId
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in invite route:', error)
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     )
   }
