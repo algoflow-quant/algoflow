@@ -1,27 +1,19 @@
-import { createClient } from "@/lib/supabase/server"
-import { redirect } from "next/navigation"
-import { AppSidebar } from "@/components/platform/app-sidebar"
-import { SiteHeader } from "@/components/layout/site-header"
+"use client"
+
+import type { User } from "@supabase/supabase-js"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SiteHeader } from "@/components/site-header"
+import { TeamSelectionContent } from "@/components/team-selection-content"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
-export default async function LabLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const supabase = await createClient()
+interface LabPageClientProps {
+  user: User
+}
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect("/login")
-  }
-
+export function LabPageClient({ user }: LabPageClientProps) {
   return (
     <SidebarProvider
       style={
@@ -36,7 +28,7 @@ export default async function LabLayout({
         <SiteHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
-            {children}
+            <TeamSelectionContent />
           </div>
         </div>
       </SidebarInset>

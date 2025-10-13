@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
 
     // Check user role from profile
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()

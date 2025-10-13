@@ -28,7 +28,6 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const supabase = createClient()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,21 +46,30 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
       return
     }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
         },
-      },
-    })
+      })
 
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      setSuccess(true)
+      if (error) {
+        console.error("Signup error:", error)
+        setError(error.message || error.toString() || "Failed to sign up. Please check your connection.")
+        setLoading(false)
+      } else {
+        console.log("Signup success:", data)
+        setSuccess(true)
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error("Unexpected signup error:", err)
+      setError("Network error: Unable to connect to authentication service. Please ensure Supabase is running.")
       setLoading(false)
     }
   }

@@ -31,22 +31,24 @@ export function LoginForm({
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const supabase = createClient()
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
-      setError(error.message)
+      console.error("Login error:", error)
+      setError(error.message || JSON.stringify(error))
       setLoading(false)
     } else {
+      console.log("Login success:", data)
       router.push("/lab")
       router.refresh()
     }

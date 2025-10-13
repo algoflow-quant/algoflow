@@ -28,15 +28,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/lib/contexts/AuthContext"
+import Link from "next/link"
+import type { User } from "@supabase/supabase-js"
 
-export function NavUser({ user }: { user?: any }) {
+export function NavUser({ user }: { user?: User }) {
   const { isMobile } = useSidebar()
-  const supabase = createClient()
+  const { signOut } = useAuth()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/"
+    await signOut()
   }
 
   const userName = user?.user_metadata?.full_name || "User"
@@ -94,22 +95,22 @@ export function NavUser({ user }: { user?: any }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <a href="/lab/settings" className="cursor-pointer">
+                <Link href="/lab/settings" className="cursor-pointer">
                   <IconUserCircle />
                   Account
-                </a>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <a href="/lab/settings?tab=billing" className="cursor-pointer">
+                <Link href="/lab/settings?tab=billing" className="cursor-pointer">
                   <IconCreditCard />
                   Billing
-                </a>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <a href="/lab/settings?tab=notifications" className="cursor-pointer">
+                <Link href="/lab/settings?tab=notifications" className="cursor-pointer">
                   <IconNotification />
                   Notifications
-                </a>
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

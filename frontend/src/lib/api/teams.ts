@@ -4,6 +4,7 @@ export interface Team {
   id: string
   name: string
   description?: string
+  avatar_url?: string
   owner_id: string
   created_at: string
   updated_at: string
@@ -20,19 +21,56 @@ export interface TeamMember {
 export interface Project {
   id: string
   team_id: string
+  creator_id: string
   name: string
   description?: string
   type: 'strategy' | 'backtest' | 'research' | 'data_analysis'
-  config?: any
+  config?: Record<string, unknown>
   status: 'active' | 'archived' | 'testing' | 'production'
   code_directory?: string
-  metrics?: any
+  metrics?: Record<string, unknown>
   created_at: string
   updated_at: string
   last_run_at?: string
 }
 
-// Team operations
+// Permission helpers
+export async function isTeamOwner(teamId: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: team } = await supabase
+    .from('teams')
+    .select('owner_id')
+    .eq('id', teamId)
+    .single()
+
+  return team?.owner_id === user.id
+}
+
+export async function canModifyProject(projectId: string): Promise<boolean> {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('creator_id, team_id, teams!inner(owner_id)')
+    .eq('id', projectId)
+    .single()
+
+  if (!project) return false
+
+  // User can modify if they are the creator OR team owner
+  return project.creator_id === user.id ||
+         (project.teams as unknown as { owner_id: string }).owner_id === user.id
+}
+
+export function canModifyProjectSync(project: Project, userId: string, isTeamOwner: boolean): boolean {
+  return project.creator_id === userId || isTeamOwner
+}
+
 export async function getUserTeams() {
   const supabase = createClient()
 
@@ -51,18 +89,30 @@ export async function getUserTeams() {
 export async function createTeam(name: string, description?: string) {
   const supabase = createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
+
   // Check if user already has 5 teams
   const { data: existingTeams } = await supabase
     .from('teams')
     .select('id')
-    .eq('owner_id', (await supabase.auth.getUser()).data.user?.id)
+    .eq('owner_id', user.id)
 
   if (existingTeams && existingTeams.length >= 5) {
     throw new Error('Maximum of 5 teams allowed per user')
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('User not authenticated')
+  // Check for duplicate team name for this user
+  const { data: duplicateTeam } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('owner_id', user.id)
+    .eq('name', name)
+    .single()
+
+  if (duplicateTeam) {
+    throw new Error('You already have a team with this name')
+  }
 
   const { data, error } = await supabase
     .from('teams')
@@ -80,6 +130,24 @@ export async function createTeam(name: string, description?: string) {
 
 export async function updateTeam(teamId: string, updates: Partial<Pick<Team, 'name' | 'description'>>) {
   const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
+
+  // Check for duplicate team name if name is being updated
+  if (updates.name) {
+    const { data: duplicateTeam } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('owner_id', user.id)
+      .eq('name', updates.name)
+      .neq('id', teamId)
+      .single()
+
+    if (duplicateTeam) {
+      throw new Error('You already have a team with this name')
+    }
+  }
 
   const { data, error } = await supabase
     .from('teams')
@@ -181,10 +249,14 @@ export async function createProject(
 ) {
   const supabase = createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
+
   const { data, error } = await supabase
     .from('projects')
     .insert({
       team_id: teamId,
+      creator_id: user.id,
       ...project
     })
     .select()
