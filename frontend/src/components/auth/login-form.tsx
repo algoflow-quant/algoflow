@@ -45,7 +45,7 @@ export function LoginForm({
 
     if (error) {
       console.error("Login error:", error)
-      setError(error.message || JSON.stringify(error))
+      setError(error instanceof Error ? error.message : String(error) || JSON.stringify(error))
       setLoading(false)
     } else {
       console.log("Login success:", data)

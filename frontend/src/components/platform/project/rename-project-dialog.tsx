@@ -41,8 +41,8 @@ export function RenameProjectDialog({
     try {
       await onSubmit(name, description)
       onOpenChange(false)
-    } catch (err: any) {
-      setError(err.message || "Failed to update project")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err) || "Failed to update project")
     } finally {
       setLoading(false)
     }

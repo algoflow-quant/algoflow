@@ -33,7 +33,7 @@ export default function NotificationsPage() {
       {/* Content */}
       <div className="relative z-10 w-full max-w-4xl space-y-6">
         {/* Header */}
-        <div className="space-y-2">
+        <div className="space-y-2 flex-shrink-0">
           <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
           <p className="text-muted-foreground">
             Stay updated with your latest activity and system alerts
@@ -42,11 +42,15 @@ export default function NotificationsPage() {
 
         {/* Admin Panel */}
         {!checkingAdmin && isUserAdmin && (
-          <AdminMessageForm onSuccess={() => window.location.reload()} />
+          <div className="flex-shrink-0">
+            <AdminMessageForm onSuccess={() => window.location.reload()} />
+          </div>
         )}
 
         {/* Notifications Panel */}
-        <NotificationsPanel />
+        <div className="flex-1 min-h-0">
+          <NotificationsPanel />
+        </div>
       </div>
     </div>
   )

@@ -55,6 +55,7 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
     if (teamId) {
       fetchMembers()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
 
   const fetchMembers = async () => {
@@ -197,7 +198,6 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
       <InviteMemberDialog
         open={showInvite}
         onOpenChange={setShowInvite}
-        teamId={teamId}
         teamName={teamName}
         onInvite={handleInvite}
       />

@@ -12,30 +12,40 @@ import {
 } from "@/components/ui/breadcrumb"
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 import { usePathname } from "next/navigation"
-import { Fragment } from "react"
-
-// Mock data - should match sidebar data
-const teams = [
-  { id: "1", name: "Personal" },
-  { id: "2", name: "LSU Quant Team" },
-  { id: "3", name: "Research Group" },
-]
-
-const projects = [
-  { id: "1", name: "Momentum Strategy", teamId: "1" },
-  { id: "2", name: "Mean Reversion", teamId: "1" },
-  { id: "3", name: "ML Predictor", teamId: "2" },
-]
+import { Fragment, useEffect, useState } from "react"
+import { getUserTeams, getTeamProjects, type Team, type Project } from "@/lib/api/teams"
 
 const resourceRoutes: Record<string, string> = {
   learn: "Learn",
   tutorials: "Tutorials",
   docs: "Documentation",
   settings: "Settings",
+  notifications: "Notifications",
 }
 
 export function SiteHeader() {
   const pathname = usePathname()
+  const [teams, setTeams] = useState<Team[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userTeams = await getUserTeams()
+        setTeams(userTeams)
+
+        // Fetch projects for all teams
+        const allProjects = await Promise.all(
+          userTeams.map(team => getTeamProjects(team.id))
+        )
+        setProjects(allProjects.flat())
+      } catch (error) {
+        console.error('Error fetching breadcrumb data:', error)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   // Parse pathname to build breadcrumbs
   const pathSegments = pathname.split("/").filter(Boolean)
@@ -76,7 +86,7 @@ export function SiteHeader() {
   const breadcrumbs = getBreadcrumbs()
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b-2 border-brand-blue/20 bg-brand-blue/5 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+    <header className="sticky top-0 z-50 flex h-(--header-height) shrink-0 items-center gap-2 border-b-2 border-brand-blue/20 bg-[rgb(var(--header-bg))] transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1 hover:bg-brand-blue/10" />
         <Separator

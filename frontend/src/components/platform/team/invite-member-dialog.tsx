@@ -31,10 +31,9 @@ interface InviteMemberDialogProps {
 export function InviteMemberDialog({
   open,
   onOpenChange,
-  teamId,
   teamName,
   onInvite,
-}: InviteMemberDialogProps) {
+}: Omit<InviteMemberDialogProps, 'teamId'>) {
   const [identifierType, setIdentifierType] = React.useState<'email' | 'username'>('email')
   const [identifier, setIdentifier] = React.useState("")
   const [loading, setLoading] = React.useState(false)
@@ -48,8 +47,8 @@ export function InviteMemberDialog({
       await onInvite(identifier.trim(), identifierType)
       setIdentifier("")
       onOpenChange(false)
-    } catch (error: any) {
-      alert(error.message || 'Failed to send invite')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to send invite')
     } finally {
       setLoading(false)
     }
@@ -61,7 +60,7 @@ export function InviteMemberDialog({
         <DialogHeader>
           <DialogTitle>Invite Team Member</DialogTitle>
           <DialogDescription>
-            Invite someone to join {teamName}. They'll receive a notification with the invite.
+            Invite someone to join {teamName}. They&apos;ll receive a notification with the invite.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

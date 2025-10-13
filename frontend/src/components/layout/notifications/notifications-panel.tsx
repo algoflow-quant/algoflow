@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
 import { IconCheck, IconTrash, IconInfoCircle, IconCircleCheck, IconAlertTriangle, IconAlertCircle, IconBell, IconX } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -27,7 +26,6 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [processingInvite, setProcessingInvite] = useState<string | null>(null)
-  const searchParams = useSearchParams()
 
   useEffect(() => {
     loadNotifications()
@@ -50,8 +48,8 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
       await acceptTeamInvitation(invitationId)
       await handleDelete(notificationId)
       window.location.reload()
-    } catch (error: any) {
-      alert(error.message || 'Failed to accept invitation')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to accept invitation')
     } finally {
       setProcessingInvite(null)
     }
@@ -62,8 +60,8 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
     try {
       await declineTeamInvitation(invitationId)
       await handleDelete(notificationId)
-    } catch (error: any) {
-      alert(error.message || 'Failed to decline invitation')
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error) || 'Failed to decline invitation')
     } finally {
       setProcessingInvite(null)
     }
@@ -144,10 +142,10 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
   }
 
   return (
-    <div className="flex flex-col w-full space-y-4">
+    <div className="flex flex-col w-full h-full space-y-4 border rounded-lg p-4">
       {/* Action Bar */}
       {notifications.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground">
               {notifications.length} {notifications.length === 1 ? 'notification' : 'notifications'}
@@ -197,7 +195,7 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto flex-1">
           {notifications.map((notification) => (
             <ShineBorder
               key={notification.id}
