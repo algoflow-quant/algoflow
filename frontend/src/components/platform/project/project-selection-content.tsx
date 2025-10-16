@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getTeamProjects, createProject, type Project, type Team } from "@/lib/api/teams"
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -37,6 +38,49 @@ export function ProjectSelectionContent({ team }: ProjectSelectionContentProps) 
   useEffect(() => {
     loadProjects()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [team.id])
+
+  // Real-time subscriptions for projects
+  useEffect(() => {
+    const supabase = createClient()
+
+    // Subscribe to projects for this team
+    const projectsChannel = supabase
+      .channel(`project-selection-${team.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: `team_id=eq.${team.id}`,
+        },
+        async (payload) => {
+          console.log('[ProjectSelection] projects event:', payload.eventType)
+
+          if (payload.eventType === 'INSERT') {
+            const newProject = payload.new as Project
+            console.log('[ProjectSelection] New project added:', newProject.name)
+            setProjects(prev => {
+              if (prev.some(p => p.id === newProject.id)) return prev
+              return [...prev, newProject]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedProject = payload.new as Project
+            console.log('[ProjectSelection] Project updated:', updatedProject.name)
+            setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p))
+          } else if (payload.eventType === 'DELETE') {
+            const deletedProject = payload.old as Project
+            console.log('[ProjectSelection] Project deleted:', deletedProject.id)
+            setProjects(prev => prev.filter(p => p.id !== deletedProject.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(projectsChannel)
+    }
   }, [team.id])
 
   const loadProjects = async () => {

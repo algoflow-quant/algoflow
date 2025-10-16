@@ -17,6 +17,8 @@ import {
 } from "@/lib/api/notifications"
 import { acceptTeamInvitation, declineTeamInvitation } from "@/lib/api/teams"
 import { formatDistanceToNow } from "date-fns"
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/lib/contexts/AuthContext"
 
 interface NotificationsPanelProps {
   onNotificationRead?: () => void
@@ -26,10 +28,47 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [processingInvite, setProcessingInvite] = useState<string | null>(null)
+  const { user } = useAuth()
 
   useEffect(() => {
     loadNotifications()
   }, [])
+
+  // Real-time subscription for notifications
+  useEffect(() => {
+    if (!user?.id) return
+
+    const supabase = createClient()
+
+    const notificationsChannel = supabase
+      .channel(`notifications-panel-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newNotification = payload.new as Notification
+            setNotifications(prev => [newNotification, ...prev])
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedNotification = payload.new as Notification
+            setNotifications(prev => prev.map(n => n.id === updatedNotification.id ? updatedNotification : n))
+          } else if (payload.eventType === 'DELETE') {
+            const deletedNotification = payload.old as { id: string }
+            setNotifications(prev => prev.filter(n => n.id !== deletedNotification.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notificationsChannel)
+    }
+  }, [user?.id])
 
   const loadNotifications = async () => {
     try {
@@ -46,8 +85,13 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
     setProcessingInvite(invitationId)
     try {
       await acceptTeamInvitation(invitationId)
+      // Mark as read first so the badge count updates correctly
+      await markAsRead(notificationId)
+      // Small delay to ensure read status propagates through real-time
+      await new Promise(resolve => setTimeout(resolve, 100))
+      // Then delete
       await handleDelete(notificationId)
-      window.location.reload()
+      // No reload needed - real-time will update the team list automatically
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error) || 'Failed to accept invitation')
     } finally {
@@ -59,6 +103,11 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
     setProcessingInvite(invitationId)
     try {
       await declineTeamInvitation(invitationId)
+      // Mark as read first so the badge count updates correctly
+      await markAsRead(notificationId)
+      // Small delay to ensure read status propagates through real-time
+      await new Promise(resolve => setTimeout(resolve, 100))
+      // Then delete
       await handleDelete(notificationId)
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error) || 'Failed to decline invitation')
@@ -142,16 +191,16 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
   }
 
   return (
-    <div className="flex flex-col w-full h-full space-y-4 border rounded-lg p-4">
+    <div className="flex flex-col w-full h-full">
       {/* Action Bar */}
       {notifications.length > 0 && (
-        <div className="flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b bg-muted/30">
           <div className="flex items-center gap-2">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm font-semibold">
               {notifications.length} {notifications.length === 1 ? 'notification' : 'notifications'}
             </p>
             {unreadCount > 0 && (
-              <Badge variant="destructive" className="h-5 px-2 text-xs">
+              <Badge variant="destructive" className="h-5 px-2 text-xs font-semibold">
                 {unreadCount} unread
               </Badge>
             )}
@@ -162,9 +211,9 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
                 variant="outline"
                 size="sm"
                 onClick={handleMarkAllAsRead}
-                className="h-8"
+                className="h-8 px-3 text-xs"
               >
-                <IconCheck className="h-3.5 w-3.5 mr-1.5" />
+                <IconCheck className="h-4 w-4 mr-1.5" />
                 Mark all read
               </Button>
             )}
@@ -173,9 +222,9 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
                 variant="outline"
                 size="sm"
                 onClick={handleDeleteAllRead}
-                className="h-8 text-muted-foreground hover:text-destructive"
+                className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive"
               >
-                <IconTrash className="h-3.5 w-3.5 mr-1.5" />
+                <IconTrash className="h-4 w-4 mr-1.5" />
                 Clear read
               </Button>
             )}
@@ -195,7 +244,7 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
           </p>
         </div>
       ) : (
-        <div className="space-y-4 overflow-y-auto flex-1">
+        <div className="space-y-3 overflow-y-auto flex-1 p-4">
           {notifications.map((notification) => (
             <ShineBorder
               key={notification.id}
@@ -243,27 +292,27 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-8 w-8 flex-shrink-0"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleMarkAsRead(notification.id)
                           }}
                           title="Mark as read"
                         >
-                          <IconCheck className="h-3.5 w-3.5" />
+                          <IconCheck className="h-4 w-4" />
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDelete(notification.id)
                         }}
                         title="Delete"
                       >
-                        <IconTrash className="h-3.5 w-3.5" />
+                        <IconTrash className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -285,22 +334,22 @@ export function NotificationsPanel({ onNotificationRead }: NotificationsPanelPro
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
-                                className="h-6 px-3 text-xs"
+                                className="h-7 px-3"
                                 onClick={() => handleAcceptInvitation(invitationId, notification.id)}
                                 disabled={processingInvite === invitationId}
                               >
-                                <IconCheck className="h-3 w-3 mr-1" />
-                                Accept
+                                <IconCheck className="h-3.5 w-3.5 mr-1.5" />
+                                <span className="text-xs font-medium">Accept</span>
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-6 px-3 text-xs"
+                                className="h-7 px-3"
                                 onClick={() => handleDeclineInvitation(invitationId, notification.id)}
                                 disabled={processingInvite === invitationId}
                               >
-                                <IconX className="h-3 w-3 mr-1" />
-                                Decline
+                                <IconX className="h-3.5 w-3.5 mr-1.5" />
+                                <span className="text-xs font-medium">Decline</span>
                               </Button>
                             </div>
                           </>

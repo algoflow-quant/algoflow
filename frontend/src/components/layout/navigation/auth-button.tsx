@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/lib/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,6 +16,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
+
+interface Profile {
+  name: string | null
+  avatar_url: string | null
+}
 
 export const AuthButton = () => {
   const { user, loading } = useAuth()
@@ -45,20 +51,76 @@ const LoginButtons = () => {
 
 const UserMenu = ({ user }: { user: SupabaseUser }) => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const [profile, setProfile] = React.useState<Profile | null>(null)
   const { signOut } = useAuth()
+
+  React.useEffect(() => {
+    loadProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // Real-time subscription for profile changes
+  React.useEffect(() => {
+    if (!user?.id) return
+
+    const supabase = createClient()
+
+    const profileChannel = supabase
+      .channel(`auth-button-profile-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        async (payload) => {
+          const updatedProfile = payload.new as { name: string | null; avatar_url: string | null }
+          setProfile(updatedProfile)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(profileChannel)
+    }
+  }, [user?.id])
+
+  const loadProfile = async () => {
+    if (!user?.id) return
+
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('profiles')
+        .select('name, avatar_url')
+        .eq('id', user.id)
+        .single()
+
+      if (data) {
+        setProfile(data)
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    }
+  }
 
   const handleLogout = async () => {
     await signOut()
   }
 
+  const displayName = profile?.name || user.user_metadata?.full_name || user.email || 'User'
+  const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="rounded-full flex items-center gap-2">
-          {user.user_metadata?.avatar_url ? (
+          {avatarUrl ? (
             <Image
-              src={user.user_metadata.avatar_url}
-              alt={user.email || 'User avatar'}
+              src={avatarUrl}
+              alt={displayName}
               width={32}
               height={32}
               className="rounded-full"
@@ -74,7 +136,7 @@ const UserMenu = ({ user }: { user: SupabaseUser }) => {
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{user.user_metadata?.full_name || 'User'}</p>
+            <p className="text-sm font-medium">{displayName}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { getUserTeams, createTeam, type Team } from "@/lib/api/teams"
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/lib/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -23,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 export function TeamSelectionContent() {
   const router = useRouter()
+  const { user } = useAuth()
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -36,6 +39,66 @@ export function TeamSelectionContent() {
   useEffect(() => {
     loadTeams()
   }, [])
+
+  // Real-time subscriptions for teams
+  useEffect(() => {
+    if (!user?.id) return
+
+    const supabase = createClient()
+
+    // Subscribe to team_members to detect when user joins or gets kicked
+    const teamMembersChannel = supabase
+      .channel(`team-selection-members-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+        },
+        async (payload) => {
+          console.log('[TeamSelection] team_members event:', payload.eventType)
+
+          if (payload.eventType === 'INSERT') {
+            const newMember = payload.new as { user_id: string }
+            if (newMember.user_id === user.id) {
+              console.log('[TeamSelection] User joined new team, reloading')
+              await loadTeams()
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const deletedMember = payload.old as { user_id: string, team_id: string }
+            if (deletedMember.user_id === user.id) {
+              console.log('[TeamSelection] User kicked from team, removing from list')
+              setTeams(prev => prev.filter(t => t.id !== deletedMember.team_id))
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    // Subscribe to teams table for name/description updates
+    const teamsChannel = supabase
+      .channel(`team-selection-teams-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'teams',
+        },
+        async (payload) => {
+          const updatedTeam = payload.new as Team
+          console.log('[TeamSelection] Team updated:', updatedTeam.name)
+          setTeams(prev => prev.map(t => t.id === updatedTeam.id ? updatedTeam : t))
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(teamMembersChannel)
+      supabase.removeChannel(teamsChannel)
+    }
+  }, [user?.id])
 
   const loadTeams = async () => {
     try {
