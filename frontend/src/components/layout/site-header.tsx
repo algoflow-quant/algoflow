@@ -14,6 +14,8 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 import { usePathname } from "next/navigation"
 import { Fragment, useEffect, useState } from "react"
 import { getUserTeams, getTeamProjects, type Team, type Project } from "@/lib/api/teams"
+import { createClient } from "@/lib/supabase/client"
+import { NotificationBell } from "@/components/layout/notifications/notification-bell"
 
 const resourceRoutes: Record<string, string> = {
   learn: "Learn",
@@ -28,6 +30,7 @@ export function SiteHeader() {
   const [teams, setTeams] = useState<Team[]>([])
   const [projects, setProjects] = useState<Project[]>([])
 
+  // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -45,6 +48,78 @@ export function SiteHeader() {
     }
 
     fetchData()
+  }, [])
+
+  // Real-time subscriptions for teams
+  useEffect(() => {
+    const supabase = createClient()
+
+    const teamsChannel = supabase
+      .channel('breadcrumb-teams')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'teams',
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newTeam = payload.new as Team
+            setTeams(prev => {
+              if (prev.some(t => t.id === newTeam.id)) return prev
+              return [...prev, newTeam]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedTeam = payload.new as Team
+            setTeams(prev => prev.map(t => t.id === updatedTeam.id ? updatedTeam : t))
+          } else if (payload.eventType === 'DELETE') {
+            const deletedTeam = payload.old as Team
+            setTeams(prev => prev.filter(t => t.id !== deletedTeam.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(teamsChannel)
+    }
+  }, [])
+
+  // Real-time subscriptions for projects
+  useEffect(() => {
+    const supabase = createClient()
+
+    const projectsChannel = supabase
+      .channel('breadcrumb-projects')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newProject = payload.new as Project
+            setProjects(prev => {
+              if (prev.some(p => p.id === newProject.id)) return prev
+              return [...prev, newProject]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedProject = payload.new as Project
+            setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p))
+          } else if (payload.eventType === 'DELETE') {
+            const deletedProject = payload.old as Project
+            setProjects(prev => prev.filter(p => p.id !== deletedProject.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(projectsChannel)
+    }
   }, [])
 
   // Parse pathname to build breadcrumbs
@@ -109,7 +184,8 @@ export function SiteHeader() {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <NotificationBell />
           <AnimatedThemeToggler />
         </div>
       </div>

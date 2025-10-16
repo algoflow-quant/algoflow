@@ -4,7 +4,7 @@ export interface Team {
   id: string
   name: string
   description?: string
-  avatar_url?: string
+  avatar_url?: string | null
   owner_id: string
   created_at: string
   updated_at: string
@@ -122,7 +122,7 @@ export async function createTeam(name: string, description?: string) {
   return data as Team
 }
 
-export async function updateTeam(teamId: string, updates: Partial<Pick<Team, 'name' | 'description'>>) {
+export async function updateTeam(teamId: string, updates: Partial<Pick<Team, 'name' | 'description' | 'avatar_url'>>) {
   const supabase = createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

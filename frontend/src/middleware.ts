@@ -27,30 +27,42 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // Protect /lab routes - require authentication
+  // Only run auth checks on protected routes
   if (request.nextUrl.pathname.startsWith('/lab')) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
 
-    // Check user role from profile
-    const { data: profile } = await supabase
+    // Check user role from profile with timeout
+    const profilePromise = supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    // If user is on waitlist, redirect to waitlist page
-    if (profile?.role === 'waitlist') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/waitlist-pending'
-      return NextResponse.redirect(url)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Profile check timeout')), 3000)
+    )
+
+    try {
+      const result = await Promise.race([profilePromise, timeoutPromise])
+      const profile = (result as { data: { role: string } | null }).data
+
+      // If user is on waitlist, redirect to waitlist page
+      if (profile?.role === 'waitlist') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/waitlist-pending'
+        return NextResponse.redirect(url)
+      }
+    } catch (error) {
+      // If profile check times out or fails, allow through (fail open)
+      console.error('Profile check failed:', error)
     }
   }
 

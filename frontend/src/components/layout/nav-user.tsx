@@ -31,19 +31,115 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/lib/contexts/AuthContext"
 import { getUnreadCount } from "@/lib/api/notifications"
+import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import type { User } from "@supabase/supabase-js"
+
+interface Profile {
+  name: string | null
+  avatar_url: string | null
+}
 
 export function NavUser({ user }: { user?: User }) {
   const { isMobile } = useSidebar()
   const { signOut } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [profile, setProfile] = useState<Profile | null>(null)
 
   useEffect(() => {
     loadUnreadCount()
-    const interval = setInterval(loadUnreadCount, 30000)
-    return () => clearInterval(interval)
-  }, [])
+    loadProfile()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!user?.id) return
+
+    const supabase = createClient()
+
+    // Subscribe to notifications
+    const notificationsChannel = supabase
+      .channel(`nav-user-notifications-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const notification = payload.new as { read: boolean }
+            // Only increment if notification is unread
+            if (!notification.read) {
+              setUnreadCount(prev => prev + 1)
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const oldNotification = payload.old as { read: boolean }
+            const newNotification = payload.new as { read: boolean }
+            // If changed from unread to read, decrement
+            if (!oldNotification.read && newNotification.read) {
+              setUnreadCount(prev => Math.max(0, prev - 1))
+            }
+            // If changed from read to unread, increment
+            if (oldNotification.read && !newNotification.read) {
+              setUnreadCount(prev => prev + 1)
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const deletedNotification = payload.old as { read: boolean }
+            // Only decrement if the deleted notification was unread
+            if (!deletedNotification.read) {
+              setUnreadCount(prev => Math.max(0, prev - 1))
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    // Subscribe to profile changes for avatar updates
+    const profileChannel = supabase
+      .channel(`nav-user-profile-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        async (payload) => {
+          const updatedProfile = payload.new as { name: string | null; avatar_url: string | null }
+          setProfile(updatedProfile)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notificationsChannel)
+      supabase.removeChannel(profileChannel)
+    }
+  }, [user?.id])
+
+  const loadProfile = async () => {
+    if (!user?.id) return
+
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('profiles')
+        .select('name, avatar_url')
+        .eq('id', user.id)
+        .single()
+
+      if (data) {
+        setProfile(data)
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    }
+  }
 
   const loadUnreadCount = async () => {
     try {
@@ -58,9 +154,9 @@ export function NavUser({ user }: { user?: User }) {
     await signOut()
   }
 
-  const userName = user?.user_metadata?.full_name || "User"
+  const userName = profile?.name || user?.user_metadata?.full_name || user?.email || "User"
   const userEmail = user?.email || ""
-  const avatarUrl = user?.user_metadata?.avatar_url || ""
+  const avatarUrl = profile?.avatar_url || ""
   const initials = userName
     .split(" ")
     .map((n: string) => n[0])
@@ -123,7 +219,7 @@ export function NavUser({ user }: { user?: User }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/lab/settings" className="cursor-pointer">
+                <Link href="/lab/account" className="cursor-pointer">
                   <IconUserCircle />
                   Account
                 </Link>

@@ -19,6 +19,7 @@ import {
 } from "@tabler/icons-react"
 
 import { NavUser } from "@/components/layout/nav-user"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Sidebar,
   SidebarContent,
@@ -47,11 +48,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { getUserTeams, getTeamProjects, createTeam, createProject, updateTeam, deleteTeam, updateProject, deleteProject, isTeamOwner, canModifyProjectSync, type Team, type Project } from "@/lib/api/teams"
+import { createClient } from "@/lib/supabase/client"
 import { CreateTeamDialog } from "@/components/platform/team/create-team-dialog"
 import { CreateProjectDialog } from "@/components/platform/project/create-project-dialog"
 import { RenameTeamDialog } from "@/components/platform/team/rename-team-dialog"
 import { RenameProjectDialog } from "@/components/platform/project/rename-project-dialog"
 import { TeamMembersSection } from "@/components/platform/team/team-members-section"
+import { TeamSettingsDialog } from "@/components/platform/team/team-settings-dialog"
 
 export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user?: User }) {
   const router = useRouter()
@@ -63,6 +66,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
   const [showCreateTeam, setShowCreateTeam] = React.useState(false)
   const [showCreateProject, setShowCreateProject] = React.useState(false)
   const [showRenameTeam, setShowRenameTeam] = React.useState(false)
+  const [showTeamSettings, setShowTeamSettings] = React.useState(false)
   const [showRenameProject, setShowRenameProject] = React.useState<string | null>(null)
   const [isOwner, setIsOwner] = React.useState(false)
 
@@ -86,9 +90,189 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
       fetchTeams()
     }
 
+    // Listen for when user gets kicked from a team
+    const handleUserKicked = (event: Event) => {
+      const customEvent = event as CustomEvent<{ teamId: string }>
+      const kickedTeamId = customEvent.detail.teamId
+      console.log('[Sidebar] User was kicked from team:', kickedTeamId)
+      console.log('[Sidebar] Current selectedTeam:', selectedTeam?.id, selectedTeam?.name)
+
+      // IMMEDIATELY clear everything if it matches the kicked team
+      if (selectedTeam?.id === kickedTeamId) {
+        console.log('[Sidebar] Clearing selected team and projects IMMEDIATELY')
+        setSelectedTeam(null)
+        setProjects([]) // Clear projects immediately
+        setIsOwner(false) // Clear owner status
+      }
+
+      // Remove team from list
+      setTeams(prev => {
+        const remainingTeams = prev.filter(t => t.id !== kickedTeamId)
+        console.log('[Sidebar] Teams after kick:', remainingTeams.map(t => t.name))
+
+        // Redirect after clearing
+        setTimeout(() => {
+          if (remainingTeams.length === 0) {
+            console.log('[Sidebar] No teams left, going to /lab')
+            router.push('/lab')
+            router.refresh()
+          } else {
+            console.log('[Sidebar] Going to first team:', remainingTeams[0].name)
+            router.push(`/lab/${remainingTeams[0].id}`)
+          }
+        }, 100)
+
+        return remainingTeams
+      })
+    }
+
     window.addEventListener('teamCreated', handleTeamCreated)
-    return () => window.removeEventListener('teamCreated', handleTeamCreated)
-  }, [])
+    window.addEventListener('userKickedFromTeam', handleUserKicked as EventListener)
+
+    return () => {
+      window.removeEventListener('teamCreated', handleTeamCreated)
+      window.removeEventListener('userKickedFromTeam', handleUserKicked as EventListener)
+    }
+  }, [selectedTeam, router])
+
+  // Real-time subscriptions for teams
+  React.useEffect(() => {
+    if (!user?.id) return
+
+    const supabase = createClient()
+
+    // Subscribe to teams changes
+    const teamsChannel = supabase
+      .channel(`teams-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'teams',
+        },
+        async (payload) => {
+          console.log('[Teams] Change detected:', payload)
+
+          if (payload.eventType === 'INSERT') {
+            const newTeam = payload.new as Team
+            console.log('[Teams] New team created:', newTeam.name)
+            // Check if team already exists (avoid duplicates from local creation)
+            setTeams(prev => {
+              if (prev.some(t => t.id === newTeam.id)) {
+                return prev
+              }
+              return [...prev, newTeam]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedTeam = payload.new as Team
+            console.log('[Teams] Team updated:', updatedTeam.name, '- avatar_url:', updatedTeam.avatar_url)
+            setTeams(prev => prev.map(t => t.id === updatedTeam.id ? updatedTeam : t))
+            // Update selected team if it's the one that changed (includes avatar updates)
+            setSelectedTeam(prev => prev?.id === updatedTeam.id ? updatedTeam : prev)
+          } else if (payload.eventType === 'DELETE') {
+            const deletedTeam = payload.old as Team
+            console.log('[Teams] Team deleted:', deletedTeam.id)
+            setTeams(prev => prev.filter(t => t.id !== deletedTeam.id))
+            // Clear selected team if it was deleted
+            if (selectedTeam?.id === deletedTeam.id) {
+              setSelectedTeam(null)
+              router.push('/lab')
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Teams] Subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('[Teams] Successfully subscribed to teams')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Teams] Channel error - realtime not enabled on teams table')
+        } else if (status === 'TIMED_OUT') {
+          console.error('[Teams] Subscription timed out')
+        } else if (status === 'CLOSED') {
+          console.log('[Teams] Channel closed')
+        }
+      })
+
+    // Subscribe to team_members changes (for when user joins OR gets kicked from a team)
+    // NOTE: We don't use filter on DELETE because Supabase may not include the filtered column in payload.old
+    const teamMembersChannel = supabase
+      .channel(`team-members-user-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+        },
+        async (payload) => {
+          console.log('[TeamMembers] RAW EVENT:', payload.eventType, 'Full payload:', JSON.stringify(payload))
+
+          if (payload.eventType === 'INSERT') {
+            const newMember = payload.new as { user_id: string }
+            // Only process if it's for this user
+            if (newMember.user_id === user.id) {
+              console.log('[TeamMembers] User joined a new team, refreshing teams list')
+              const userTeams = await getUserTeams()
+              setTeams(userTeams)
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const deletedMember = payload.old as { team_id: string, user_id: string }
+            console.log('[TeamMembers] DELETE event - team_id:', deletedMember.team_id, 'user_id:', deletedMember.user_id, 'current user:', user.id)
+
+            // Only process if it's for this user
+            if (deletedMember.user_id === user.id) {
+              console.log('[TeamMembers] THIS USER was removed from team:', deletedMember.team_id)
+              console.log('[TeamMembers] Current selected team:', selectedTeam?.id, selectedTeam?.name)
+
+              // Update teams list first using functional update
+              setTeams(prev => {
+                console.log('[TeamMembers] Current teams in state:', prev.map(t => ({ id: t.id, name: t.name })))
+                const remainingTeams = prev.filter(t => t.id !== deletedMember.team_id)
+                console.log('[TeamMembers] Remaining teams after filter:', remainingTeams.map(t => ({ id: t.id, name: t.name })))
+
+                // Clear selected team and redirect AFTER updating teams state
+                setTimeout(() => {
+                  console.log('[TeamMembers] Clearing selected team and redirecting')
+                  setSelectedTeam(null)
+
+                  if (remainingTeams.length === 0) {
+                    console.log('[TeamMembers] No teams left, going to /lab')
+                    router.push('/lab')
+                    router.refresh()
+                  } else {
+                    console.log('[TeamMembers] Going to first team:', remainingTeams[0].id, remainingTeams[0].name)
+                    router.push(`/lab/${remainingTeams[0].id}`)
+                  }
+                }, 0)
+
+                return remainingTeams
+              })
+            } else {
+              console.log('[TeamMembers] DELETE was for different user, ignoring')
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[TeamMembers] Subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('[TeamMembers] Successfully subscribed to team_members for user')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[TeamMembers] Channel error - realtime not enabled on team_members table')
+        } else if (status === 'TIMED_OUT') {
+          console.error('[TeamMembers] Subscription timed out')
+        } else if (status === 'CLOSED') {
+          console.log('[TeamMembers] Channel closed')
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(teamsChannel)
+      supabase.removeChannel(teamMembersChannel)
+    }
+  }, [user?.id, selectedTeam?.id, router])
 
   // Update selected team based on URL
   React.useEffect(() => {
@@ -135,6 +319,85 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
     window.addEventListener('projectCreated', handleProjectCreated)
     return () => window.removeEventListener('projectCreated', handleProjectCreated)
   }, [selectedTeam])
+
+  // Real-time subscriptions for projects - Subscribe to ALL projects, filter by selected team in state
+  React.useEffect(() => {
+    if (!user?.id) return
+
+    const supabase = createClient()
+
+    // Subscribe to ALL project changes (no team filter - we'll filter in the handler)
+    const projectsChannel = supabase
+      .channel(`projects-all-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+        },
+        async (payload) => {
+          console.log('[Projects] Change detected:', payload)
+
+          if (payload.eventType === 'INSERT') {
+            const newProject = payload.new as Project
+            console.log('[Projects] New project added:', newProject.name, 'for team:', newProject.team_id)
+
+            // Only add if it belongs to the currently selected team
+            if (selectedTeam?.id === newProject.team_id) {
+              setProjects(prev => {
+                if (prev.some(p => p.id === newProject.id)) {
+                  return prev
+                }
+                return [...prev, newProject]
+              })
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedProject = payload.new as Project
+            console.log('[Projects] Project updated:', updatedProject.name)
+
+            // Only update if it belongs to the currently selected team
+            if (selectedTeam?.id === updatedProject.team_id) {
+              setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p))
+            }
+          } else if (payload.eventType === 'DELETE') {
+            const deletedProject = payload.old as Project
+            console.log('[Projects] Project deleted:', deletedProject.id, 'from team:', deletedProject.team_id)
+            console.log('[Projects] Current selected team:', selectedTeam?.id)
+            console.log('[Projects] Current projects before delete:', projects.map(p => p.id))
+
+            // Remove from projects list if it's currently in there
+            setProjects(prev => {
+              const filtered = prev.filter(p => p.id !== deletedProject.id)
+              console.log('[Projects] Projects after delete:', filtered.map(p => p.id))
+              return filtered
+            })
+
+            // Navigate away if we're viewing the deleted project
+            if (pathname === `/lab/${selectedTeam?.id}/${deletedProject.id}`) {
+              console.log('[Projects] Currently viewing deleted project, redirecting...')
+              router.push(`/lab/${selectedTeam?.id}`)
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Projects] Subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('[Projects] Successfully subscribed to ALL projects')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Projects] Channel error - realtime not enabled on projects table')
+        } else if (status === 'TIMED_OUT') {
+          console.error('[Projects] Subscription timed out')
+        } else if (status === 'CLOSED') {
+          console.log('[Projects] Channel closed')
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(projectsChannel)
+    }
+  }, [user?.id, selectedTeam?.id, pathname, router])
 
   const handleCreateTeam = async (name: string, description?: string) => {
     try {
@@ -278,13 +541,18 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
                     <DropdownMenuTrigger asChild>
                       <SidebarMenuButton className="h-auto py-3 hover:bg-brand-blue/10 flex-1 group-data-[collapsible=icon]:justify-center">
                         <div className="flex items-center gap-3 w-full group-data-[collapsible=icon]:w-auto">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-blue/10 text-brand-blue font-semibold text-sm flex-shrink-0">
-                            {selectedTeam ? (
-                              selectedTeam.name.slice(0, 2).toUpperCase()
-                            ) : (
+                          {selectedTeam ? (
+                            <Avatar className="h-10 w-10 rounded-lg flex-shrink-0">
+                              <AvatarImage src={selectedTeam.avatar_url || undefined} alt={selectedTeam.name} />
+                              <AvatarFallback className="rounded-lg bg-brand-blue/10 text-brand-blue font-semibold text-sm">
+                                {selectedTeam.name.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-blue/10 text-brand-blue font-semibold text-sm flex-shrink-0">
                               <IconPlus className="!size-5" />
-                            )}
-                          </div>
+                            </div>
+                          )}
                           <div className="flex flex-col items-start flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
                             <span className="text-sm font-semibold truncate">
                               {selectedTeam?.name || 'Select Team'}
@@ -304,9 +572,12 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
                           onClick={() => handleTeamSelect(team)}
                           className="flex items-center gap-3 p-3"
                         >
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-blue/10 text-brand-blue font-semibold text-xs flex-shrink-0">
-                            {team.name.slice(0, 2).toUpperCase()}
-                          </div>
+                          <Avatar className="h-8 w-8 rounded-lg flex-shrink-0">
+                            <AvatarImage src={team.avatar_url || undefined} alt={team.name} />
+                            <AvatarFallback className="rounded-lg bg-brand-blue/10 text-brand-blue font-semibold text-xs">
+                              {team.name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                           <div className="flex flex-col flex-1 min-w-0">
                             <span className="font-medium truncate">{team.name}</span>
                             {team.description && (
@@ -327,31 +598,12 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
 
                   {/* Team Actions Menu - Only show if team is selected and user is owner */}
                   {selectedTeam && isOwner && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-brand-blue/10 transition-colors group-data-[collapsible=icon]:hidden">
-                          <IconDotsVertical className="!size-4 text-muted-foreground" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => setShowRenameTeam(true)}
-                          disabled={!isOwner}
-                        >
-                          <IconPencil className="mr-2 !size-4" />
-                          <span>Rename Team</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={handleDeleteTeam}
-                          disabled={!isOwner}
-                          className="text-destructive"
-                        >
-                          <IconTrash className="mr-2 !size-4" />
-                          <span>Delete Team</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <button
+                      onClick={() => setShowTeamSettings(true)}
+                      className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-brand-blue/10 transition-colors group-data-[collapsible=icon]:hidden"
+                    >
+                      <IconSettings className="!size-4 text-muted-foreground" />
+                    </button>
                   )}
                 </div>
               )}
@@ -525,6 +777,24 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
           projectName={projects.find(p => p.id === showRenameProject)?.name || ''}
           projectDescription={projects.find(p => p.id === showRenameProject)?.description}
           onSubmit={(name, description) => handleRenameProject(showRenameProject, name, description)}
+        />
+      )}
+
+      {selectedTeam && (
+        <TeamSettingsDialog
+          open={showTeamSettings}
+          onOpenChange={setShowTeamSettings}
+          teamId={selectedTeam.id}
+          teamName={selectedTeam.name}
+          teamDescription={selectedTeam.description}
+          teamAvatarUrl={selectedTeam.avatar_url}
+          onUpdate={async (updates) => {
+            await updateTeam(selectedTeam.id, updates)
+            const updatedTeam = { ...selectedTeam, ...updates }
+            setTeams(teams.map(t => t.id === updatedTeam.id ? updatedTeam : t))
+            setSelectedTeam(updatedTeam)
+          }}
+          onDelete={handleDeleteTeam}
         />
       )}
     </Sidebar>

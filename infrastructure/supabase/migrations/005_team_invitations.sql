@@ -59,11 +59,6 @@ BEGIN
   VALUES (v_invitation.team_id, auth.uid(), 'member')
   ON CONFLICT (team_id, user_id) DO NOTHING;
 
-  -- Update invitation status
-  UPDATE public.team_invitations
-  SET status = 'accepted', updated_at = NOW()
-  WHERE id = invitation_id;
-
   -- Send notification to inviter
   PERFORM public.create_notification(
     v_invitation.inviter_id,
@@ -72,6 +67,10 @@ BEGIN
     'success',
     '/lab/' || v_invitation.team_id::text
   );
+
+  -- Delete invitation instead of updating status (allows re-inviting)
+  DELETE FROM public.team_invitations
+  WHERE id = invitation_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -90,11 +89,6 @@ BEGIN
     RAISE EXCEPTION 'Invitation not found or already processed';
   END IF;
 
-  -- Update invitation status
-  UPDATE public.team_invitations
-  SET status = 'declined', updated_at = NOW()
-  WHERE id = invitation_id;
-
   -- Send notification to inviter
   PERFORM public.create_notification(
     v_invitation.inviter_id,
@@ -103,6 +97,10 @@ BEGIN
     'info',
     '/lab/' || v_invitation.team_id::text
   );
+
+  -- Delete invitation instead of updating status (allows re-inviting)
+  DELETE FROM public.team_invitations
+  WHERE id = invitation_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

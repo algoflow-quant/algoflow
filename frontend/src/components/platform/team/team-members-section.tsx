@@ -27,6 +27,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { getTeamMembers, inviteTeamMember, removeTeamMember, type TeamMember } from "@/lib/api/teams"
 import { InviteMemberDialog } from "./invite-member-dialog"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 interface TeamMembersSectionProps {
   teamId: string
@@ -50,13 +52,111 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
   const [members, setMembers] = React.useState<TeamMemberWithProfile[]>([])
   const [loading, setLoading] = React.useState(true)
   const [showInvite, setShowInvite] = React.useState(false)
+  const [isKicked, setIsKicked] = React.useState(false)
 
   React.useEffect(() => {
     if (teamId) {
+      setIsKicked(false) // Reset kicked state when team changes
       fetchMembers()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
+
+  // Listen for kick events
+  React.useEffect(() => {
+    const handleUserKicked = (event: Event) => {
+      const customEvent = event as CustomEvent<{ teamId: string }>
+      if (customEvent.detail.teamId === teamId) {
+        console.log('[TeamMembersSection] User kicked from this team, hiding section')
+        setIsKicked(true)
+        setMembers([])
+      }
+    }
+
+    window.addEventListener('userKickedFromTeam', handleUserKicked as EventListener)
+    return () => {
+      window.removeEventListener('userKickedFromTeam', handleUserKicked as EventListener)
+    }
+  }, [teamId])
+
+  // Real-time subscriptions for team members
+  React.useEffect(() => {
+    if (!teamId) return
+
+    const supabase = createClient()
+
+    const membersChannel = supabase
+      .channel(`team-members-${teamId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+          filter: `team_id=eq.${teamId}`,
+        },
+        async (payload) => {
+          console.log('[TeamMembers] Change detected:', payload)
+
+          if (payload.eventType === 'INSERT') {
+            const newMember = payload.new as TeamMember
+            console.log('[TeamMembers] New member joined:', newMember.user_id)
+            // Fetch full member data with profile
+            await fetchMembers()
+            // Show toast notification
+            if (newMember.user_id !== currentUserId) {
+              toast.success('New team member joined!')
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            console.log('[TeamMembers] Member updated')
+            await fetchMembers()
+          } else if (payload.eventType === 'DELETE') {
+            const deletedMember = payload.old as { id: string }
+            console.log('[TeamMembers] DELETE - member id:', deletedMember.id)
+
+            // Use functional update to access current members state
+            setMembers(prev => {
+              // Find the member in current state before removing
+              const memberInState = prev.find(m => m.id === deletedMember.id)
+              console.log('[TeamMembers] Found member in state:', memberInState?.user_id, 'currentUser:', currentUserId)
+
+              // Check if it was the current user BEFORE removing
+              if (memberInState && memberInState.user_id === currentUserId) {
+                console.log('[TeamMembers] *** CURRENT USER KICKED ***')
+                // Dispatch event to sidebar
+                window.dispatchEvent(new CustomEvent('userKickedFromTeam', {
+                  detail: { teamId }
+                }))
+                toast.error('You were removed from the team')
+              } else {
+                console.log('[TeamMembers] Other member left')
+                toast.info('A team member left')
+              }
+
+              // Return filtered list
+              return prev.filter(m => m.id !== deletedMember.id)
+            })
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[TeamMembers] Subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          console.log('[TeamMembers] Successfully subscribed to team members for team:', teamId)
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[TeamMembers] Channel error - realtime not enabled on team_members table')
+        } else if (status === 'TIMED_OUT') {
+          console.error('[TeamMembers] Subscription timed out')
+        } else if (status === 'CLOSED') {
+          console.log('[TeamMembers] Channel closed')
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(membersChannel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, currentUserId])
 
   const fetchMembers = async () => {
     try {
@@ -88,6 +188,12 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
     } catch (error) {
       console.error('Error removing team member:', error)
     }
+  }
+
+  // Don't render if user was kicked or no members
+  if (isKicked || members.length === 0) {
+    console.log('[TeamMembersSection] Rendering nothing - kicked:', isKicked, 'members:', members.length)
+    return null
   }
 
   if (loading) {
