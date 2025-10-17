@@ -1,0 +1,99 @@
+/* Override GoldenLayout default styles */
+.lm_goldenlayout {
+  height: 100% !important;
+  width: 100% !important;
+  max-height: 100% !important;
+  max-width: 100% !important;
+  position: relative !important;
+}
+
+.lm_root {
+  position: relative !important;
+  max-height: 100% !important;
+}
+
+.lm_content {
+  overflow: hidden !important;
+}
+
+.lm_item_container {
+  overflow: hidden !important;
+}
+
+/* Remove any default scrollbars from golden layout */
+.lm_stack .lm_items {
+  overflow: hidden !important;
+}
+
+/* Ensure panels don't grow beyond container */
+.lm_item {
+  position: relative !important;
+  max-height: 100% !important;
+}
+
+.lm_header {
+  flex-shrink: 0 !important;
+}
+
+/* Fix maximized state */
+.lm_maximised {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  z-index: 40 !important;
+}
+
+.lm_maximised .lm_items {
+  max-height: calc(100% - 20px) !important;
+}
+
+.lm_maximised .lm_content {
+  max-height: 100% !important;
+}
+
+/* Theme-colored backgrounds and borders */
+.lm_splitter {
+  background: color-mix(in srgb, var(--brand-blue) 20%, transparent) !important;
+}
+
+.lm_content {
+  background: var(--background) !important;
+  border: 1px solid color-mix(in srgb, var(--brand-blue) 20%, transparent) !important;
+}
+
+.lm_goldenlayout {
+  background: var(--background) !important;
+}
+
+.lm_root {
+  background: var(--background) !important;
+}
+
+.lm_items {
+  background: var(--background) !important;
+}
+
+/* Rounded top corners for tabs */
+.lm_header .lm_tab {
+  border-top-left-radius: 6px !important;
+  border-top-right-radius: 6px !important;
+  box-shadow: none !important;
+  background: color-mix(in srgb, var(--background) 80%, var(--foreground) 20%) !important;
+  color: var(--foreground) !important;
+}
+
+.lm_header .lm_tab.lm_active {
+  box-shadow: none !important;
+  background: color-mix(in srgb, var(--background) 90%, var(--foreground) 10%) !important;
+  color: var(--foreground) !important;
+}
+
+/* Monaco Editor background override */
+.monaco-editor,
+.monaco-editor .monaco-editor-background,
+.monaco-editor .margin {
+  background-color: hsl(var(--background)) !important;
+}
