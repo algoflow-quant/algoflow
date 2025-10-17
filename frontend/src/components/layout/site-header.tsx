@@ -184,7 +184,7 @@ export function SiteHeader() {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-4">
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>

@@ -317,6 +317,35 @@ export async function createProject(
     .single()
 
   if (error) throw error
+
+  console.log('[createProject] Project created:', data.id)
+
+  // Initialize default project files
+  try {
+    console.log('[createProject] Calling file initialization API for project:', data.id)
+    const response = await fetch('/api/projects/initialize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ projectId: data.id })
+    })
+
+    console.log('[createProject] API response status:', response.status)
+    const responseText = await response.text()
+    console.log('[createProject] API response:', responseText)
+
+    if (!response.ok) {
+      console.error('[createProject] Failed to initialize project files:', responseText)
+      // Don't throw - project is created, files can be added later
+    } else {
+      console.log('[createProject] Files initialized successfully')
+    }
+  } catch (fileError) {
+    console.error('[createProject] Error initializing project files:', fileError)
+    // Don't throw - project is created, files can be added later
+  }
+
   return data as Project
 }
 

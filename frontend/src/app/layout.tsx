@@ -33,7 +33,6 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
-          disableTransitionOnChange
         >
           <AuthProvider>
             {children}
