@@ -7,7 +7,7 @@ interface ActionsPanelProps {
   projectId?: string
 }
 
-export function ActionsPanel({ projectId }: ActionsPanelProps = {}) {
+export function ActionsPanel(_props: ActionsPanelProps = {}) {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
       <div className="p-3 border-b border-border flex-shrink-0">

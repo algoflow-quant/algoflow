@@ -216,6 +216,21 @@ export async function POST(request: Request) {
       }
 
       uploadResults.push(data)
+
+      // Insert into project_files table for realtime sync
+      const fileName = file.path.split('/').pop() || ''
+      const fileSize = new Blob([file.content]).size
+
+      await supabase
+        .from('project_files')
+        .insert({
+          project_id: projectId,
+          name: fileName,
+          path: file.path,
+          size: fileSize,
+          mime_type: file.contentType,
+          created_by: user.id
+        })
     }
 
     return NextResponse.json({

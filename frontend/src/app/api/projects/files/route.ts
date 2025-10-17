@@ -52,21 +52,50 @@ export async function GET(request: Request) {
       )
     }
 
-    // List files from storage
-    const { data: files, error } = await supabase.storage
-      .from('project-files')
-      .list(projectId, {
-        limit: 1000,
-        sortBy: { column: 'name', order: 'asc' }
-      })
-
-    if (error) {
-      console.error('Error listing files:', error)
-      return NextResponse.json(
-        { error: 'Failed to list files' },
-        { status: 500 }
-      )
+    // Recursively list all files from storage
+    interface FileItem {
+      id: string | null
+      name: string
+      updated_at: string
+      created_at: string
+      last_accessed_at: string
+      metadata: Record<string, unknown>
     }
+
+    async function listAllFiles(path: string = projectId!): Promise<FileItem[]> {
+      const { data: items, error } = await supabase.storage
+        .from('project-files')
+        .list(path, {
+          limit: 1000,
+          sortBy: { column: 'name', order: 'asc' }
+        })
+
+      if (error) {
+        console.error('Error listing files at path:', path, error)
+        throw error
+      }
+
+      const allFiles: FileItem[] = []
+
+      for (const item of items || []) {
+        if (item.id) {
+          // It's a file
+          allFiles.push({
+            ...item,
+            name: path === projectId ? item.name : `${path.replace(projectId + '/', '')}/${item.name}`
+          })
+        } else {
+          // It's a folder - recursively list its contents
+          const subPath = `${path}/${item.name}`
+          const subFiles = await listAllFiles(subPath)
+          allFiles.push(...subFiles)
+        }
+      }
+
+      return allFiles
+    }
+
+    const files = await listAllFiles()
 
     return NextResponse.json({ files: files || [] })
 

@@ -2,6 +2,30 @@ import { useState, useCallback } from "react"
 import { GoldenLayout } from "golden-layout"
 import { PANEL_REGISTRY } from "./panel-registry"
 
+// Type definitions for GoldenLayout items
+type LayoutItem = {
+  type?: string
+  isColumn?: boolean
+  isComponent?: boolean
+  componentType?: string
+  contentItems?: LayoutItem[]
+  remove?: () => void
+  addItem?: (config: unknown, index?: number) => void
+}
+
+type LayoutRoot = LayoutItem & {
+  addItem?: (config: unknown, index?: number) => void
+}
+
+type LayoutColumn = LayoutItem & {
+  addComponent: (type: string, state: unknown, title: string, index?: number) => void
+}
+
+type LayoutWithRoot = GoldenLayout & {
+  root: LayoutRoot
+  addComponent: (type: string, state: unknown, title: string) => void
+}
+
 export function usePanelManager(layoutRef: React.RefObject<GoldenLayout | null>) {
   const [visiblePanels, setVisiblePanels] = useState<Set<string>>(
     new Set(Object.keys(PANEL_REGISTRY).filter(id => PANEL_REGISTRY[id].defaultVisible))
@@ -41,15 +65,15 @@ export function usePanelManager(layoutRef: React.RefObject<GoldenLayout | null>)
     }
 
     try {
-      const layout = layoutRef.current as any
+      const layout = layoutRef.current as LayoutWithRoot
       console.log('[PanelManager] Adding component based on default layout position')
 
       // Default layout: Root Row [FileTree Stack, Column [Editor Stack, Console Stack], Actions Stack]
       // We need to find which existing component to add next to
 
       // Find the column (middle section)
-      const findColumn = (item: any): any => {
-        if (item.isColumn) return item
+      const findColumn = (item: LayoutItem): LayoutColumn | null => {
+        if (item.isColumn) return item as LayoutColumn
         if (item.contentItems) {
           for (const child of item.contentItems) {
             const found = findColumn(child)
@@ -132,9 +156,9 @@ export function usePanelManager(layoutRef: React.RefObject<GoldenLayout | null>)
     if (!layoutRef.current) return
 
     try {
-      const layout = layoutRef.current as any
+      const layout = layoutRef.current as LayoutWithRoot
       // Find and remove the panel
-      const findAndRemove = (item: any): boolean => {
+      const findAndRemove = (item: LayoutItem): boolean => {
         // Check if this is a component with matching componentType
         if (item.isComponent && item.componentType === panelId) {
           if (item.remove) {

@@ -1,4 +1,4 @@
-import { IconFolder, IconCode, IconTerminal, IconRocket, IconBrandPython } from "@tabler/icons-react"
+import { IconFolder, IconCode, IconTerminal, IconRocket } from "@tabler/icons-react"
 import { FileTreePanel } from "./file-tree-panel"
 import { CodeEditorPanel } from "./code-editor-panel"
 import { ConsolePanel } from "./console-panel"
@@ -45,14 +45,6 @@ export const PANEL_REGISTRY: Record<string, PanelDefinition> = {
     component: ActionsPanel,
     category: "tools",
     defaultVisible: true,
-  },
-  notebook: {
-    id: "notebook",
-    title: "Notebook",
-    icon: IconBrandPython,
-    component: CodeEditorPanel, // TODO: Replace with NotebookPanel
-    category: "editor",
-    defaultVisible: false,
   },
 }
 
