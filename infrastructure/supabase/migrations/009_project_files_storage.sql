@@ -2,8 +2,7 @@
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('project-files', 'project-files', false);
 
--- Enable RLS on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Note: RLS is already enabled on storage.objects by default in Supabase
 
 -- Policy: Users can view files in their team's projects
 CREATE POLICY "Users can view project files from their teams"

@@ -17,6 +17,9 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
 -- Enable realtime for notifications table
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 
+-- Enable realtime for project_files table (for file sync)
+ALTER PUBLICATION supabase_realtime ADD TABLE public.project_files;
+
 -- =============================================
 -- CONFIGURE REPLICA IDENTITY FOR DELETE EVENTS
 -- =============================================
@@ -28,3 +31,6 @@ ALTER TABLE public.team_members REPLICA IDENTITY FULL;
 
 -- Include team_id in projects DELETE events
 ALTER TABLE public.projects REPLICA IDENTITY FULL;
+
+-- Include project_id in project_files DELETE events
+ALTER TABLE public.project_files REPLICA IDENTITY FULL;
