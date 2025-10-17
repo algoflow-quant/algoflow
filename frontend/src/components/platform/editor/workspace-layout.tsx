@@ -50,7 +50,7 @@ const defaultLayout: LayoutConfig = {
 }
 
 // Create component constructors for each panel type
-const panelConstructors: Record<string, any> = {}
+const panelConstructors: Record<string, unknown> = {}
 
 // Store projectId, theme, and layout globally for panel constructors to access
 let currentProjectId: string | undefined
@@ -79,7 +79,7 @@ export function getGlobalLayout(): GoldenLayout | null {
 }
 
 Object.keys(PANEL_REGISTRY).forEach((panelId) => {
-  panelConstructors[panelId] = function(container: ComponentContainer, state: any) {
+  panelConstructors[panelId] = function(container: ComponentContainer, state: Record<string, unknown>) {
     const panel = PANEL_REGISTRY[panelId]
     if (!panel) {
       console.error(`Panel ${panelId} not found in registry`)
@@ -92,17 +92,20 @@ Object.keys(PANEL_REGISTRY).forEach((panelId) => {
     container.element.appendChild(root)
 
     const reactRoot = createRoot(root)
-    const Component = panel.component as any
+    const Component = panel.component as React.ComponentType<{ projectId?: string; [key: string]: unknown }>
 
     // Component state is passed as second parameter to constructor
     const componentState = state || {}
 
-    console.log('[WorkspaceLayout] Creating panel:', panelId, 'with state:', componentState)
-
     // Render function to re-render component with updated state
     const render = () => {
       // Check custom state first (for dynamic updates), then initial state
-      const currentState = (container as any)._customState || (container as any).state || componentState
+      interface ContainerWithCustomState {
+        _customState?: Record<string, unknown>
+        state?: Record<string, unknown>
+      }
+      const extendedContainer = container as ComponentContainer & ContainerWithCustomState
+      const currentState = extendedContainer._customState || extendedContainer.state || componentState
       reactRoot.render(
         <Component projectId={currentProjectId} {...currentState} />
       )
@@ -114,8 +117,25 @@ Object.keys(PANEL_REGISTRY).forEach((panelId) => {
     // Listen for state changes and re-render
     container.on('stateChanged', render)
 
+    // Listen for tab activation - dispatch event when editor tabs are selected
+    container.on('shown', () => {
+      if (panelId === 'editor') {
+        const extendedContainer = container as ComponentContainer & { _customState?: { fileName?: string }; state?: { fileName?: string } }
+        const currentState = extendedContainer._customState || extendedContainer.state || componentState
+        const fileName = currentState.fileName
+
+        if (fileName && typeof fileName === 'string') {
+          // Dispatch custom event that CodeEditorPanel will listen to
+          window.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { fileName } }))
+        }
+      }
+    })
+
     // Return destroy method
-    this.destroy = () => {
+    interface ConstructorContext {
+      destroy?: () => void
+    }
+    (this as ConstructorContext).destroy = () => {
       container.off('stateChanged', render)
       reactRoot.unmount()
     }
@@ -155,7 +175,7 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
 
     // Register all panels from the registry
     Object.keys(PANEL_REGISTRY).forEach((panelId) => {
-      layout.registerComponentConstructor(panelId, panelConstructors[panelId])
+      layout.registerComponentConstructor(panelId, panelConstructors[panelId] as never)
     })
 
     // Load default layout
@@ -164,46 +184,42 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
     layoutRef.current = layout
     globalLayoutRef = layoutRef
 
+    // Type for layout item with component properties
+    interface LayoutItem {
+      isComponent?: boolean
+      componentType?: string
+      container?: {
+        _customState?: Record<string, unknown>
+        state?: Record<string, unknown>
+      }
+    }
+
     // Register panel tracking events AFTER layout is loaded
-    console.log('[WorkspaceLayout] Registering panel tracking events')
-    layout.on('itemDestroyed', (event: any) => {
-      const item = event.target
-      console.log('[WorkspaceLayout] Item destroyed:', {
-        isComponent: item.isComponent,
-        componentType: item.componentType,
-        type: item.type
-      })
+    layout.on('itemDestroyed', (event: { target: unknown }) => {
+      const item = event.target as LayoutItem
 
       // Only track component items, not containers
       if (item.isComponent && item.componentType) {
-        console.log('[WorkspaceLayout] Component destroyed:', item.componentType)
         onPanelRemoved(item.componentType)
       }
     })
 
-    layout.on('itemCreated', (event: any) => {
-      const item = event.target
-      console.log('[WorkspaceLayout] Item created:', {
-        isComponent: item.isComponent,
-        componentType: item.componentType,
-        type: item.type
-      })
+    layout.on('itemCreated', (event: { target: unknown }) => {
+      const item = event.target as LayoutItem
 
       // Only track component items, not containers
       // Don't track individual editor tabs - only the first editor panel
       if (item.isComponent && item.componentType) {
         // Skip tracking editor tabs after the first one
         if (item.componentType === 'editor') {
-          const container = (item as any).container
+          const container = item.container
           const state = container?._customState || container?.state || {}
           // Only track if it's the default empty editor (no fileName)
           if (state.fileName) {
-            console.log('[WorkspaceLayout] Skipping editor tab tracking:', state.fileName)
             return
           }
         }
 
-        console.log('[WorkspaceLayout] Component created:', item.componentType)
         onPanelAdded(item.componentType)
       }
     })

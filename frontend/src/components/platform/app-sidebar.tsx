@@ -43,6 +43,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -55,6 +62,147 @@ import { RenameTeamDialog } from "@/components/platform/team/rename-team-dialog"
 import { RenameProjectDialog } from "@/components/platform/project/rename-project-dialog"
 import { TeamMembersSection } from "@/components/platform/team/team-members-section"
 import { TeamSettingsDialog } from "@/components/platform/team/team-settings-dialog"
+import { UserAvatars } from "@/components/platform/editor/user-avatars"
+import { usePresence } from "@/components/platform/editor/use-presence"
+
+// Project menu item with presence avatars
+function ProjectMenuItem({
+  project,
+  selectedTeam,
+  isActive,
+  user,
+  isOwner,
+  onRename,
+  onDelete,
+  allPresenceUsers,
+  currentProjectId
+}: {
+  project: Project
+  selectedTeam: Team | null
+  isActive: boolean
+  user?: User
+  isOwner: boolean
+  onRename: () => void
+  onDelete: () => void
+  allPresenceUsers: Array<{
+    userId: string
+    userName: string
+    avatarUrl?: string
+    projectId?: string
+    fileName?: string
+    color: string
+  }>
+  currentProjectId: string | null
+}) {
+  // Only show presence for the currently active project in the URL
+  const projectUsers = React.useMemo(() => {
+    // If this is not the current project, don't show any users
+    if (currentProjectId !== project.id) {
+      return []
+    }
+
+    const usersInProject = allPresenceUsers.filter(u => u.projectId === project.id)
+    // Deduplicate by userId - keep only the first occurrence of each user
+    const uniqueUsers = Array.from(
+      new Map(usersInProject.map(u => [u.userId, u])).values()
+    )
+    return uniqueUsers
+  }, [allPresenceUsers, project.id, currentProjectId])
+  const [showUsersList, setShowUsersList] = React.useState(false)
+
+  return (
+    <SidebarMenuSubItem>
+      <div className="flex items-center gap-1 group">
+        <SidebarMenuSubButton asChild className="flex-1">
+          <Link
+            href={`/lab/${selectedTeam?.id}/${project.id}`}
+            className={isActive ? "bg-brand-blue/10 text-brand-blue font-semibold" : ""}
+          >
+            <span className="flex-1">{project.name}</span>
+            {projectUsers.length > 0 && (
+              <div onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowUsersList(true)
+              }}>
+                <UserAvatars users={projectUsers} size="sm" max={3} />
+              </div>
+            )}
+          </Link>
+        </SidebarMenuSubButton>
+
+        {/* Project Actions Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="opacity-0 group-hover:opacity-100 flex h-6 w-6 items-center justify-center rounded hover:bg-brand-blue/10 transition-all">
+              <IconDotsVertical className="!size-3 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={onRename}
+              disabled={!canModifyProjectSync(project, user?.id || '', isOwner)}
+            >
+              <IconPencil className="mr-2 !size-4" />
+              <span>Rename</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onDelete}
+              disabled={!canModifyProjectSync(project, user?.id || '', isOwner)}
+              className="text-destructive"
+            >
+              <IconTrash className="mr-2 !size-4" />
+              <span>Delete</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Users List Dialog */}
+      <Dialog open={showUsersList} onOpenChange={setShowUsersList}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Active Users - {project.name}</DialogTitle>
+            <DialogDescription>
+              {projectUsers.length} {projectUsers.length === 1 ? 'user' : 'users'} currently working on this project
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {projectUsers.map((user, index) => (
+              <div
+                key={`${user.userId}-${index}`}
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                  style={{ backgroundColor: user.color }}
+                >
+                  {user.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.userName}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    user.userName.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{user.userName}</p>
+                  {user.fileName && (
+                    <p className="text-sm text-muted-foreground">Editing: {user.fileName}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </SidebarMenuSubItem>
+  )
+}
 
 export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user?: User }) {
   const router = useRouter()
@@ -65,6 +213,16 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
   const [loading, setLoading] = React.useState(true)
   const [showCreateTeam, setShowCreateTeam] = React.useState(false)
   const [showCreateProject, setShowCreateProject] = React.useState(false)
+
+  // Extract current project ID from URL pathname (e.g., /lab/teamId/projectId)
+  const currentProjectId = React.useMemo(() => {
+    const parts = pathname?.split('/') || []
+    return parts.length >= 4 ? parts[3] : null
+  }, [pathname])
+
+  // Read global presence state - the hook will return ALL users from the global state
+  // Even though we pass trackPresence=false, it still subscribes to state changes
+  const { allUsers: allPresenceUsers } = usePresence('', '', false)
   const [showRenameTeam, setShowRenameTeam] = React.useState(false)
   const [showTeamSettings, setShowTeamSettings] = React.useState(false)
   const [showRenameProject, setShowRenameProject] = React.useState<string | null>(null)
@@ -272,7 +430,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
       supabase.removeChannel(teamsChannel)
       supabase.removeChannel(teamMembersChannel)
     }
-  }, [user?.id, selectedTeam?.id, router])
+  }, [user?.id, selectedTeam?.id, selectedTeam?.name, router])
 
   // Update selected team based on URL
   React.useEffect(() => {
@@ -397,6 +555,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
     return () => {
       supabase.removeChannel(projectsChannel)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, selectedTeam?.id, pathname, router])
 
   const handleCreateTeam = async (name: string, description?: string) => {
@@ -644,45 +803,18 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
                     {projects.map((project) => {
                       const isActive = pathname === `/lab/${selectedTeam?.id}/${project.id}`
                       return (
-                        <SidebarMenuSubItem key={project.id}>
-                          <div className="flex items-center gap-1 group">
-                            <SidebarMenuSubButton asChild className="flex-1">
-                              <Link
-                                href={`/lab/${selectedTeam?.id}/${project.id}`}
-                                className={isActive ? "bg-brand-blue/10 text-brand-blue font-semibold" : ""}
-                              >
-                                {project.name}
-                              </Link>
-                            </SidebarMenuSubButton>
-
-                            {/* Project Actions Menu */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button className="opacity-0 group-hover:opacity-100 flex h-6 w-6 items-center justify-center rounded hover:bg-brand-blue/10 transition-all">
-                                  <IconDotsVertical className="!size-3 text-muted-foreground" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => setShowRenameProject(project.id)}
-                                  disabled={!canModifyProjectSync(project, user?.id || '', isOwner)}
-                                >
-                                  <IconPencil className="mr-2 !size-4" />
-                                  <span>Rename</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteProject(project.id, project.name)}
-                                  disabled={!canModifyProjectSync(project, user?.id || '', isOwner)}
-                                  className="text-destructive"
-                                >
-                                  <IconTrash className="mr-2 !size-4" />
-                                  <span>Delete</span>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </SidebarMenuSubItem>
+                        <ProjectMenuItem
+                          key={project.id}
+                          project={project}
+                          selectedTeam={selectedTeam}
+                          isActive={isActive}
+                          user={user}
+                          isOwner={isOwner}
+                          onRename={() => setShowRenameProject(project.id)}
+                          onDelete={() => handleDeleteProject(project.id, project.name)}
+                          allPresenceUsers={allPresenceUsers}
+                          currentProjectId={currentProjectId}
+                        />
                       )
                     })}
                     <SidebarMenuSubItem>

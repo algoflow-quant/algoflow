@@ -53,6 +53,7 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
   const [loading, setLoading] = React.useState(true)
   const [showInvite, setShowInvite] = React.useState(false)
   const [isKicked, setIsKicked] = React.useState(false)
+  const [onlineUsers, setOnlineUsers] = React.useState<Set<string>>(new Set())
 
   React.useEffect(() => {
     if (teamId) {
@@ -158,6 +159,89 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, currentUserId])
 
+  // Track online status via presence
+  React.useEffect(() => {
+    if (!teamId) return
+
+    let cleanup: (() => void) | null = null
+
+    const setupPresence = async () => {
+      const supabase = createClient()
+      const channelName = `team-presence:${teamId}`
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', user.id)
+        .single()
+
+      const updateOnlineUsers = () => {
+        const state = presenceChannel.presenceState()
+        const online = new Set<string>()
+
+        Object.entries(state).forEach(([_key, presences]) => {
+          const presenceArray = presences as unknown as Array<{
+            user_id: string
+            user_name: string
+            online_at: string
+          }>
+          presenceArray.forEach((presence) => {
+            online.add(presence.user_id)
+          })
+        })
+
+        console.log('[TeamPresence] Online users:', Array.from(online))
+        setOnlineUsers(online)
+      }
+
+      const presenceChannel = supabase
+        .channel(channelName, {
+          config: {
+            presence: {
+              key: user.id // Use user ID as unique presence key
+            }
+          }
+        })
+        .on('presence', { event: 'sync' }, () => {
+          console.log('[TeamPresence] Sync event')
+          updateOnlineUsers()
+        })
+        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+          console.log('[TeamPresence] User joined:', key, newPresences)
+          updateOnlineUsers()
+        })
+        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+          console.log('[TeamPresence] User left:', key, leftPresences)
+          updateOnlineUsers()
+        })
+        .subscribe(async (status) => {
+          console.log('[TeamPresence] Status:', status)
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({
+              user_id: user.id,
+              user_name: profile?.name || 'Unknown',
+              online_at: new Date().toISOString()
+            })
+            console.log('[TeamPresence] Started tracking for user:', user.id)
+          }
+        })
+
+      cleanup = () => {
+        console.log('[TeamPresence] Cleaning up - untracking presence')
+        presenceChannel.untrack()
+      }
+    }
+
+    setupPresence()
+
+    return () => {
+      cleanup?.()
+    }
+  }, [teamId])
+
   const fetchMembers = async () => {
     try {
       const teamMembers = await getTeamMembers(teamId)
@@ -240,18 +324,27 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
                       .slice(0, 2)
 
                     const canRemove = isOwner && member.role !== 'owner' && member.user_id !== currentUserId
+                    const isOnline = onlineUsers.has(member.user_id)
 
                     return (
                       <SidebarMenuSubItem key={member.id}>
                         <div className="flex items-center w-full gap-1 group/member">
                           <SidebarMenuSubButton className="h-auto py-1.5 hover:bg-brand-blue/10 cursor-default flex-1">
                             <div className="flex items-center gap-2 w-full">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={member.profiles?.avatar_url || undefined} />
-                                <AvatarFallback className="bg-brand-blue/10 text-brand-blue text-[10px]">
-                                  {initials}
-                                </AvatarFallback>
-                              </Avatar>
+                              <div className="relative">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={member.profiles?.avatar_url || undefined} />
+                                  <AvatarFallback className="bg-brand-blue/10 text-brand-blue text-[10px]">
+                                    {initials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div
+                                  className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-background ${
+                                    isOnline ? 'bg-green-500' : 'bg-gray-400'
+                                  }`}
+                                  title={isOnline ? 'Online' : 'Offline'}
+                                />
+                              </div>
                               <div className="flex items-center justify-between w-full">
                                 <span className="text-xs font-medium truncate">
                                   {memberName}

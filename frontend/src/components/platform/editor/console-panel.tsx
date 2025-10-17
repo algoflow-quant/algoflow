@@ -6,7 +6,7 @@ interface ConsolePanelProps {
   projectId?: string
 }
 
-export function ConsolePanel({ projectId }: ConsolePanelProps = {}) {
+export function ConsolePanel(_props: ConsolePanelProps = {}) {
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden">
       <div className="p-3 border-b border-border flex-shrink-0">
