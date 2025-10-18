@@ -7,6 +7,7 @@ import { onThemeChange } from "./workspace-layout"
 import { useRealtimeCollab } from "./use-realtime-collab"
 import { usePresence } from "./use-presence"
 import { uploadFile } from "@/lib/api/files"
+import { JupyterNotebookWrapper } from "./jupyter-notebook-wrapper"
 
 interface CodeEditorPanelProps {
   projectId?: string
@@ -132,6 +133,9 @@ export function CodeEditorPanel({ projectId, fileName }: CodeEditorPanelProps = 
     return 'plaintext'
   }
 
+  // Check if this is a Jupyter notebook
+  const isNotebook = currentFileName.endsWith('.ipynb')
+
   return (
     <div className="flex flex-col h-full w-full bg-background overflow-hidden" onClick={handleEditorClick}>
       <div className="flex-1 overflow-hidden bg-background relative">
@@ -139,6 +143,18 @@ export function CodeEditorPanel({ projectId, fileName }: CodeEditorPanelProps = 
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
             No file selected
           </div>
+        ) : isNotebook ? (
+          <JupyterNotebookWrapper
+            projectId={projectId || ''}
+            filePath={currentFileName}
+            content={fileData.content}
+            onChange={(value) => {
+              if (currentFileName) {
+                updateFileContent(currentFileName, value)
+                debouncedSave(value)
+              }
+            }}
+          />
         ) : (
           <Editor
             key={currentTheme}

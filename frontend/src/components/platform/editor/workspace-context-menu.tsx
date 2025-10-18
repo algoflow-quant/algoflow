@@ -29,6 +29,10 @@ export function WorkspaceContextMenu({
   onResetLayout,
 }: WorkspaceContextMenuProps) {
   const allPanels = getAllPanels()
+  // Force re-render when visiblePanels changes by converting Set to array
+  const visiblePanelsArray = React.useMemo(() => Array.from(visiblePanels), [visiblePanels])
+
+  console.log('[ContextMenu] Component render. Visible panels:', visiblePanelsArray)
 
   return (
     <ContextMenu>
@@ -44,11 +48,16 @@ export function WorkspaceContextMenu({
           <ContextMenuSubContent className="w-48">
             {allPanels.map((panel) => {
               const Icon = panel.icon
+              const isChecked = visiblePanels.has(panel.id)
+              console.log('[ContextMenu] Rendering panel checkbox:', panel.id, 'checked:', isChecked)
               return (
                 <ContextMenuCheckboxItem
-                  key={panel.id}
-                  checked={visiblePanels.has(panel.id)}
-                  onCheckedChange={() => onTogglePanel(panel.id)}
+                  key={`${panel.id}-${isChecked}`}
+                  checked={isChecked}
+                  onCheckedChange={() => {
+                    console.log('[ContextMenu] User clicked toggle for:', panel.id, 'current state:', isChecked)
+                    onTogglePanel(panel.id)
+                  }}
                 >
                   <Icon className="mr-2 h-4 w-4" />
                   {panel.title}

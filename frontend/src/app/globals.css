@@ -141,6 +141,147 @@
   }
 }
 
+/* Markdown content styles for notebook cells */
+.markdown-content {
+  line-height: 1.6;
+  color: inherit;
+}
+
+.markdown-content h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin-top: 0.67em;
+  margin-bottom: 0.67em;
+  line-height: 1.2;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 0.83em;
+  margin-bottom: 0.83em;
+  line-height: 1.3;
+}
+
+.markdown-content h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  line-height: 1.4;
+}
+
+.markdown-content h4 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-top: 1.33em;
+  margin-bottom: 1.33em;
+}
+
+.markdown-content h5 {
+  font-size: 1em;
+  font-weight: 600;
+  margin-top: 1.67em;
+  margin-bottom: 1.67em;
+}
+
+.markdown-content h6 {
+  font-size: 0.9em;
+  font-weight: 600;
+  margin-top: 2.33em;
+  margin-bottom: 2.33em;
+}
+
+.markdown-content p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  font-size: 1em;
+}
+
+.markdown-content ul, .markdown-content ol {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 2em;
+}
+
+.markdown-content li {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-content code {
+  background-color: rgba(127, 127, 127, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.9em;
+}
+
+.markdown-content pre {
+  background-color: rgba(127, 127, 127, 0.1);
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.markdown-content pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid rgba(127, 127, 127, 0.3);
+  padding-left: 1em;
+  margin-left: 0;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  color: rgba(127, 127, 127, 0.8);
+}
+
+.markdown-content strong {
+  font-weight: 700;
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+.markdown-content a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.markdown-content a:hover {
+  color: #2563eb;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid rgba(127, 127, 127, 0.2);
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.markdown-content th, .markdown-content td {
+  border: 1px solid rgba(127, 127, 127, 0.2);
+  padding: 0.5em;
+  text-align: left;
+}
+
+.markdown-content th {
+  background-color: rgba(127, 127, 127, 0.1);
+  font-weight: 600;
+}
+
 ::view-transition-old(root), ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;

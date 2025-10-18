@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { GoldenLayout } from "golden-layout"
 import { PANEL_REGISTRY } from "./panel-registry"
 
@@ -27,27 +27,43 @@ type LayoutWithRoot = GoldenLayout & {
 }
 
 export function usePanelManager(layoutRef: React.RefObject<GoldenLayout | null>) {
-  const [visiblePanels, setVisiblePanels] = useState<Set<string>>(
-    new Set(Object.keys(PANEL_REGISTRY).filter(id => PANEL_REGISTRY[id].defaultVisible))
-  )
+  const [visiblePanelsArray, setVisiblePanelsArray] = useState<string[]>(() => {
+    const initial = Object.keys(PANEL_REGISTRY).filter(id => PANEL_REGISTRY[id].defaultVisible)
+    console.log('[PanelManager] Initial visiblePanelsArray:', initial)
+    return initial
+  })
+
+  // Convert array to Set for the API
+  const visiblePanels = useMemo(() => {
+    const set = new Set(visiblePanelsArray)
+    console.log('[PanelManager] visiblePanels Set created:', Array.from(set))
+    return set
+  }, [visiblePanelsArray])
 
   // Callbacks for workspace to call when panels are added/removed via GoldenLayout events
   const onPanelAdded = useCallback((panelId: string) => {
     console.log('[PanelManager] onPanelAdded:', panelId)
-    setVisiblePanels(prev => {
-      const next = new Set(prev)
-      next.add(panelId)
-      console.log('[PanelManager] New visible panels:', Array.from(next))
+    setVisiblePanelsArray(prev => {
+      if (prev.includes(panelId)) {
+        console.log('[PanelManager] Panel already in array:', panelId)
+        return prev
+      }
+      const next = [...prev, panelId]
+      console.log('[PanelManager] New visible panels:', next)
       return next
     })
   }, [])
 
   const onPanelRemoved = useCallback((panelId: string) => {
     console.log('[PanelManager] onPanelRemoved:', panelId)
-    setVisiblePanels(prev => {
-      const next = new Set(prev)
-      next.delete(panelId)
-      console.log('[PanelManager] New visible panels:', Array.from(next))
+    setVisiblePanelsArray(prev => {
+      // Check if panel was actually in the array
+      if (!prev.includes(panelId)) {
+        console.log('[PanelManager] Panel was not in visiblePanels array:', panelId)
+        return prev
+      }
+      const next = prev.filter(id => id !== panelId)
+      console.log('[PanelManager] Removed panel. New visible panels:', next)
       return next
     })
   }, [])
@@ -183,9 +199,12 @@ export function usePanelManager(layoutRef: React.RefObject<GoldenLayout | null>)
   }, [layoutRef])
 
   const togglePanel = useCallback((panelId: string) => {
+    console.log('[PanelManager] togglePanel called:', panelId, 'currently visible:', visiblePanels.has(panelId))
     if (visiblePanels.has(panelId)) {
+      console.log('[PanelManager] Removing panel:', panelId)
       removePanel(panelId)
     } else {
+      console.log('[PanelManager] Adding panel:', panelId)
       addPanel(panelId)
     }
   }, [visiblePanels, addPanel, removePanel])
@@ -197,6 +216,7 @@ export function usePanelManager(layoutRef: React.RefObject<GoldenLayout | null>)
 
   return {
     visiblePanels,
+    visiblePanelsArray, // Expose array for React to track changes
     isPanelVisible,
     addPanel,
     removePanel,
