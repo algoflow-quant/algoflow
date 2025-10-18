@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { usePanelManager } from "./use-panel-manager"
+import { usePanelManagerContext } from "./panel-manager-context"
 import { PANEL_REGISTRY } from "./panel-registry"
 import { cn } from "@/lib/utils"
 import { ChevronRight, ChevronDown } from "lucide-react"
@@ -80,13 +80,12 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
   const [newFileName, setNewFileName] = useState("")
   const [contextPath, setContextPath] = useState<string>("")
 
-  // Panel management
-  const layoutRef = useRef<import('golden-layout').GoldenLayout | null>(null)
-  useEffect(() => {
-    layoutRef.current = getGlobalLayout()
-  }, [])
+  // Panel management - use shared context
+  const panelManager = usePanelManagerContext()
 
-  const panelManager = usePanelManager(layoutRef)
+  // Force re-render when visiblePanelsArray changes
+  const panelKey = panelManager.visiblePanelsArray.join('-')
+
 
   const loadFiles = async () => {
     if (!projectId) return
@@ -855,11 +854,18 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
             <ContextMenuSubContent className="w-48">
               {Object.entries(PANEL_REGISTRY).map(([id, panel]) => {
                 const Icon = panel.icon
+                // Use array from context to force re-render when it changes
+                const isChecked = panelManager.visiblePanels.has(id)
+                const arrayKey = panelManager.visiblePanelsArray.join('-')
+                console.log('[FileTree ContextMenu] Rendering panel:', id, 'checked:', isChecked, 'visiblePanels:', panelManager.visiblePanelsArray)
                 return (
                   <ContextMenuCheckboxItem
-                    key={id}
-                    checked={panelManager.visiblePanels.has(id)}
-                    onCheckedChange={() => panelManager.togglePanel(id)}
+                    key={`${id}-${arrayKey}`}
+                    checked={isChecked}
+                    onCheckedChange={() => {
+                      console.log('[FileTree ContextMenu] Toggling panel:', id, 'was checked:', isChecked)
+                      panelManager.togglePanel(id)
+                    }}
                   >
                     <Icon className="h-4 w-4 mr-2" />
                     {panel.title}

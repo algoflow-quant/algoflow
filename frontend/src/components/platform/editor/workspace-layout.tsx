@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useMemo } from "react"
 import { createRoot } from "react-dom/client"
 import { GoldenLayout, ComponentContainer, LayoutConfig } from "golden-layout"
 import { useTheme } from "next-themes"
 import { PANEL_REGISTRY } from "./panel-registry"
 import { usePanelManager } from "./use-panel-manager"
 import { WorkspaceContextMenu } from "./workspace-context-menu"
+import { PanelManagerProvider } from "./panel-manager-context"
 import "golden-layout/dist/css/goldenlayout-base.css"
 import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css"
 import "./golden-layout.css"
@@ -19,7 +20,7 @@ const defaultLayout: LayoutConfig = {
         type: "component",
         componentType: "fileTree",
         title: "Files",
-        width: 20,
+        width: 15,
       },
       {
         type: "column",
@@ -37,25 +38,31 @@ const defaultLayout: LayoutConfig = {
             height: 30,
           },
         ],
-        width: 60,
+        width: 70,
       },
       {
         type: "component",
         componentType: "actions",
         title: "Actions",
-        width: 20,
+        width: 15,
       },
     ],
+  },
+  settings: {
+    popoutWholeStack: false, // Only popout active component, not whole stack
+    blockedPopoutsThrowError: false, // Don't throw errors if popup blocked
+    closePopoutsOnUnload: true, // Close popouts when main window closes
   },
 }
 
 // Create component constructors for each panel type
 const panelConstructors: Record<string, unknown> = {}
 
-// Store projectId, theme, and layout globally for panel constructors to access
+// Store projectId, theme, layout, and panelManager globally for panel constructors to access
 let currentProjectId: string | undefined
 let currentTheme: string = "dark"
 let globalLayoutRef: { current: GoldenLayout | null } | null = null
+let globalPanelManager: ReturnType<typeof usePanelManager> | null = null
 
 // Global theme change listeners
 const themeChangeListeners: Set<(theme: string) => void> = new Set()
@@ -106,9 +113,17 @@ Object.keys(PANEL_REGISTRY).forEach((panelId) => {
       }
       const extendedContainer = container as ComponentContainer & ContainerWithCustomState
       const currentState = extendedContainer._customState || extendedContainer.state || componentState
-      reactRoot.render(
+
+      // Wrap component with PanelManagerProvider if available
+      const component = globalPanelManager ? (
+        <PanelManagerProvider value={globalPanelManager}>
+          <Component projectId={currentProjectId} {...currentState} />
+        </PanelManagerProvider>
+      ) : (
         <Component projectId={currentProjectId} {...currentState} />
       )
+
+      reactRoot.render(component)
     }
 
     // Initial render
@@ -155,6 +170,9 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
   const panelManager = usePanelManager(layoutRef)
   const { theme } = useTheme()
 
+  // Store panelManager globally so panel constructors can access it
+  globalPanelManager = panelManager
+
   // Extract callbacks to avoid dependency issues
   const { onPanelAdded, onPanelRemoved } = panelManager
 
@@ -165,6 +183,30 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
     }
   }, [theme])
 
+  // Force re-render of all GoldenLayout panels when visiblePanelsArray changes
+  useEffect(() => {
+    if (!layoutRef.current) return
+
+    console.log('[WorkspaceLayout] visiblePanelsArray changed, triggering panel re-renders')
+
+    // Trigger stateChanged event on all containers to force re-render
+    const layout = layoutRef.current as any
+    if (layout.root && layout.root.contentItems) {
+      const triggerRerender = (items: any[]) => {
+        items.forEach((item: any) => {
+          if (item.isComponent && item.container) {
+            // Emit stateChanged to trigger the render callback
+            item.container.emit('stateChanged')
+          }
+          if (item.contentItems) {
+            triggerRerender(item.contentItems)
+          }
+        })
+      }
+      triggerRerender([layout.root])
+    }
+  }, [panelManager.visiblePanelsArray])
+
   useEffect(() => {
     if (!containerRef.current) return
 
@@ -173,12 +215,12 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
     // Initialize GoldenLayout
     const layout = new GoldenLayout(container)
 
-    // Register all panels from the registry
+    // Register all panels from the registry BEFORE checking for popout
     Object.keys(PANEL_REGISTRY).forEach((panelId) => {
       layout.registerComponentConstructor(panelId, panelConstructors[panelId] as never)
     })
 
-    // Load default layout
+    // Load the default layout
     layout.loadLayout(defaultLayout)
 
     layoutRef.current = layout
@@ -276,13 +318,20 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
     }
   }, [onPanelAdded, onPanelRemoved])
 
+  // Create a new context value when visiblePanelsArray changes to trigger re-renders
+  // Use the array join as a key to force re-creation when it changes
+  const panelArrayKey = panelManager.visiblePanelsArray.join(',')
+  const contextValue = useMemo(() => panelManager, [panelArrayKey])
+
   return (
-    <WorkspaceContextMenu
-      visiblePanels={panelManager.visiblePanels}
-      onTogglePanel={panelManager.togglePanel}
-      onResetLayout={panelManager.resetLayout}
-    >
-      <div ref={containerRef} className="w-full h-full" />
-    </WorkspaceContextMenu>
+    <PanelManagerProvider value={contextValue}>
+      <WorkspaceContextMenu
+        visiblePanels={panelManager.visiblePanels}
+        onTogglePanel={panelManager.togglePanel}
+        onResetLayout={panelManager.resetLayout}
+      >
+        <div ref={containerRef} className="w-full h-full" />
+      </WorkspaceContextMenu>
+    </PanelManagerProvider>
   )
 }

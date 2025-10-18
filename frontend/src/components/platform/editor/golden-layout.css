@@ -97,3 +97,24 @@
 .monaco-editor .margin {
   background-color: hsl(var(--background)) !important;
 }
+
+/* Hide popout button - feature not supported in Next.js environment */
+.lm_header .lm_popout {
+  display: none !important;
+}
+
+/* Fix icon colors - dark in light mode, light in dark mode */
+html:not(.dark) .lm_header .lm_close,
+html:not(.dark) .lm_header .lm_maximise,
+html:not(.dark) .lm_header .lm_popout,
+html:not(.dark) .lm_header .lm_tabdropdown {
+  filter: brightness(0) !important;
+}
+
+html.dark .lm_header .lm_close,
+html.dark .lm_header .lm_maximise,
+html.dark .lm_header .lm_popout,
+html.dark .lm_header .lm_tabdropdown {
+  filter: none !important;
+  opacity: 0.8 !important;
+}
