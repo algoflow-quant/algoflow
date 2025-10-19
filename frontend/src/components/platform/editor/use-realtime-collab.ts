@@ -595,7 +595,7 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
           })
         }
       }
-    }, 10000) // Send heartbeat every 10 seconds
+    }, process.env.NODE_ENV === 'development' ? 60000 : 30000) // Longer interval in dev to reduce bandwidth
 
     return () => {
       clearInterval(heartbeatInterval)

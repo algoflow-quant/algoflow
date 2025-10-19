@@ -181,11 +181,23 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
   const { onPanelAdded, onPanelRemoved } = panelManager
 
   // Set this workspace as active when it mounts
-  // Simply set the active project - don't clear it on unmount to avoid React strict mode issues
   useEffect(() => {
-    console.log(`[WorkspaceLayout] Setting active project to ${projectId}`)
+    console.log(`[WorkspaceLayout] MOUNTING - Setting active project to ${projectId}`)
     currentProjectId = projectId
     activeProjectId = projectId
+
+    return () => {
+      console.log(`[WorkspaceLayout] UNMOUNTING - Clearing active project ${projectId}`)
+      // Clear this project as active if it's still the active one
+      if (activeProjectId === projectId) {
+        console.log(`[WorkspaceLayout] UNMOUNTING - activeProjectId was ${activeProjectId}, setting to undefined`)
+        activeProjectId = undefined
+      }
+      if (currentProjectId === projectId) {
+        console.log(`[WorkspaceLayout] UNMOUNTING - currentProjectId was ${currentProjectId}, setting to undefined`)
+        currentProjectId = undefined
+      }
+    }
   }, [projectId])
 
   // Notify all panels when theme changes
