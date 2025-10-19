@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
-import { INotebookContent } from '@jupyterlab/nbformat';
+import { INotebookContent, ICell, ICellMetadata, IOutput } from '@jupyterlab/nbformat';
 import { Play, Plus, Trash2, ChevronUp, ChevronDown, Code, Type, Check, RotateCcw, Square, Cloud, Cpu, HardDrive, Activity, Zap, MoreHorizontal, Copy, Maximize2, FileText, Download, Settings } from 'lucide-react';
 import { onThemeChange } from './workspace-layout';
 import { uploadFile } from '@/lib/api/files';
@@ -17,12 +17,24 @@ interface NotebookEditorProps {
   onChange?: (content: string) => void;
 }
 
+interface NotebookOutput {
+  output_type: string;
+  data?: Record<string, unknown>;
+  text?: string | string[];
+  execution_count?: number | null;
+  name?: string;
+  ename?: string;
+  evalue?: string;
+  traceback?: string[];
+  metadata?: Record<string, unknown>;
+}
+
 interface NotebookCell {
   id: string;
   cell_type: 'code' | 'markdown' | 'raw';
   execution_count: number | null;
-  metadata: Record<string, any>;
-  outputs: any[];
+  metadata: Record<string, unknown>;
+  outputs: NotebookOutput[];
   source: string | string[];
   isRendered?: boolean; // For markdown cells - toggle between edit/preview
   executionStatus?: 'success' | 'error' | null; // Track execution status
@@ -321,7 +333,7 @@ export function NotebookEditor({
         cell_type: cell.cell_type as 'code' | 'markdown' | 'raw',
         execution_count: ('execution_count' in cell ? cell.execution_count : null) as number | null,
         metadata: cell.metadata || {},
-        outputs: ('outputs' in cell ? cell.outputs : []) as any[],
+        outputs: ('outputs' in cell ? cell.outputs : []) as unknown as NotebookOutput[],
         source: cell.source
       }));
       // Mark markdown cells as rendered by default
@@ -546,7 +558,7 @@ export function NotebookEditor({
       const wsUrl = `ws://localhost:8888/api/kernels/${kernelId}/channels`;
       const ws = new WebSocket(wsUrl);
 
-      const outputs: any[] = [];
+      const outputs: NotebookOutput[] = [];
       let executionCount = cell.execution_count || 0;
 
       let msgId: string;

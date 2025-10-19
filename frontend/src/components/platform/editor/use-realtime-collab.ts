@@ -39,7 +39,7 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
   const suppressNextChangeRef = useRef(false)
   const suppressNextChangePerCell = useRef<Map<string, boolean>>(new Map())
   const suppressCellChangesRef = useRef<Set<string>>(new Set()) // Track which cells should suppress next change
-  const pendingRemoteChanges = useRef<Map<string, any[]>>(new Map()) // Queue remote changes per cell/editor
+  const pendingRemoteChanges = useRef<Map<string, unknown[]>>(new Map()) // Queue remote changes per cell/editor
   const isApplyingRemoteChanges = useRef<Set<string>>(new Set()) // Track if we're applying remote changes
   const myIdRef = useRef<string>('')
   const userNameRef = useRef<string>('User')
