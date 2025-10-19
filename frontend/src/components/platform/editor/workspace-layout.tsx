@@ -190,20 +190,26 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
     console.log('[WorkspaceLayout] visiblePanelsArray changed, triggering panel re-renders')
 
     // Trigger stateChanged event on all containers to force re-render
-    const layout = layoutRef.current as any
-    if (layout.root && layout.root.contentItems) {
-      const triggerRerender = (items: any[]) => {
-        items.forEach((item: any) => {
-          if (item.isComponent && item.container) {
-            // Emit stateChanged to trigger the render callback
-            item.container.emit('stateChanged')
-          }
-          if (item.contentItems) {
-            triggerRerender(item.contentItems)
-          }
-        })
+    const layout = layoutRef.current as unknown
+    if (layout && typeof layout === 'object' && 'root' in layout) {
+      const root = layout.root as { contentItems?: unknown[] }
+      if (root.contentItems) {
+        const triggerRerender = (items: unknown[]) => {
+          items.forEach((item: unknown) => {
+            if (typeof item === 'object' && item && 'isComponent' in item && 'container' in item) {
+              const componentItem = item as { isComponent: boolean; container: { emit: (event: string) => void }; contentItems?: unknown[] }
+              if (componentItem.isComponent && componentItem.container) {
+                // Emit stateChanged to trigger the render callback
+                componentItem.container.emit('stateChanged')
+              }
+              if (componentItem.contentItems) {
+                triggerRerender(componentItem.contentItems)
+              }
+            }
+          })
+        }
+        triggerRerender([layout.root])
       }
-      triggerRerender([layout.root])
     }
   }, [panelManager.visiblePanelsArray])
 
