@@ -5,7 +5,7 @@ import { useWorkspace } from "./workspace-context"
 import { useRef, useEffect, useState, useCallback } from "react"
 import { onThemeChange } from "./workspace-layout"
 import { useRealtimeCollab } from "./use-realtime-collab"
-import { usePresence } from "./use-presence"
+import { useProjectPresence } from "./use-project-presence"
 import { uploadFile } from "@/lib/api/files"
 import { JupyterNotebookWrapper } from "./jupyter-notebook-wrapper"
 
@@ -35,10 +35,8 @@ export function CodeEditorPanel({ projectId, fileName }: CodeEditorPanelProps = 
     }
   }
 
-  // Track presence for active tabs OR for the default editor (when fileName prop is not provided)
-  // This ensures at least one editor is always tracking presence
-  const shouldTrackPresence = isActiveTab || !fileName
-  usePresence(projectId || '', currentFileName, shouldTrackPresence)
+  // Track file presence using the new system (only when we have a file name)
+  useProjectPresence(projectId || null, currentFileName || undefined)
 
   // Enable real-time collaboration only when editor is ready
   const { myColor } = useRealtimeCollab({

@@ -6,7 +6,7 @@ import { INotebookContent } from '@jupyterlab/nbformat';
 import { Play, Plus, Trash2, ChevronUp, ChevronDown, Code, Type, Check, RotateCcw, Square, Cloud, Cpu, HardDrive, Activity, Zap, MoreHorizontal, Copy, Maximize2, FileText, Download, Settings } from 'lucide-react';
 import { onThemeChange } from './workspace-layout';
 import { uploadFile } from '@/lib/api/files';
-import { usePresence } from './use-presence';
+import { useProjectPresence } from './use-project-presence';
 import { useRealtimeCollab } from './use-realtime-collab';
 import ReactMarkdown from 'react-markdown';
 
@@ -45,8 +45,8 @@ export function NotebookEditor({
   const activeCellEditorRef = useRef<import('monaco-editor').editor.IStandaloneCodeEditor | null>(null);
   const activeCellIdRef = useRef<string | null>(null);
 
-  // Track presence for the notebook
-  usePresence(projectId, filePath);
+  // Track presence for the notebook using the new system (with file path)
+  useProjectPresence(projectId, filePath);
 
   // Enable real-time collaboration for the notebook
   // Pass all editors so cursors can be rendered in the correct cells
@@ -108,7 +108,7 @@ export function NotebookEditor({
   const [openOutputMenu, setOpenOutputMenu] = useState<string | null>(null);
   const [collapsedOutputs, setCollapsedOutputs] = useState<Set<string>>(new Set());
   const [openCellTypeMenu, setOpenCellTypeMenu] = useState<string | null>(null);
-  const [showNotebookMenu, setShowNotebookMenu] = useState(false);
+  const [showNotebookMenu, setShowNotebookMenu] = useState(true);
   const [activeDropdownMenu, setActiveDropdownMenu] = useState<string | null>(null);
 
   // Auto-save
@@ -602,11 +602,21 @@ export function NotebookEditor({
         // Handle outputs
         if (msg.msg_type === 'stream') {
           console.log('[Notebook] Stream output:', msg.content);
-          outputs.push({
-            output_type: 'stream',
-            name: msg.content.name,
-            text: msg.content.text
-          });
+          // Check if we already have a stream output for this name, and append to it
+          const existingStreamIndex = outputs.findIndex(
+            o => o.output_type === 'stream' && o.name === msg.content.name
+          );
+          if (existingStreamIndex >= 0) {
+            // Append to existing stream output
+            outputs[existingStreamIndex].text += msg.content.text;
+          } else {
+            // Create new stream output
+            outputs.push({
+              output_type: 'stream',
+              name: msg.content.name,
+              text: msg.content.text
+            });
+          }
         } else if (msg.msg_type === 'execute_result') {
           console.log('[Notebook] Execute result:', msg.content);
           outputs.push({
@@ -1393,6 +1403,33 @@ export function NotebookEditor({
 
       {/* Notebook cells */}
       <div className="flex-1 overflow-auto py-6">
+      {/* Insert cell divider before first cell */}
+      <div className="group/insert relative py-2">
+        <div className="absolute inset-0 flex items-center opacity-0 group-hover/insert:opacity-100 transition-opacity z-10">
+          <div className="flex-1 border-t border-neutral-300 dark:border-neutral-600 ml-[72px]"></div>
+          <div className="flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-2 py-1 mx-2 shadow-sm">
+            <button
+              onClick={() => addCell(-1, 'code')}
+              className="px-3 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors flex items-center gap-1.5 group/btn"
+            >
+              <Code className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100" />
+              <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100">Code</span>
+            </button>
+
+            <div className="w-px h-3 bg-neutral-300 dark:bg-neutral-600"></div>
+
+            <button
+              onClick={() => addCell(-1, 'markdown')}
+              className="px-3 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors flex items-center gap-1.5 group/btn"
+            >
+              <Type className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100" />
+              <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100">Markdown</span>
+            </button>
+          </div>
+          <div className="flex-1 border-t border-neutral-300 dark:border-neutral-600 mr-4"></div>
+        </div>
+      </div>
+
       {cells.map((cell, index) => (
         <div key={cell.id} className="relative">
           {/* Cell content */}
@@ -1400,12 +1437,11 @@ export function NotebookEditor({
             className="group relative"
             onClick={() => setSelectedCellId(cell.id)}
           >
-          {/* Left side: In label with execution count */}
-          <div className="absolute left-6 top-2 flex flex-col items-start gap-1">
+          {/* Left side: Execution count */}
+          <div className="absolute left-2 top-2 flex flex-col items-start gap-1 w-[65px]">
             <div className="flex items-center gap-1">
-              <span className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">In</span>
               <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono">
-                [{executingCells.has(cell.id) ? '*' : (cell.execution_count || ' ')}]:
+                [{executingCells.has(cell.id) ? '*' : (cell.execution_count || ' ')}]
               </span>
             </div>
             {cell.executionStatus && (
@@ -1421,7 +1457,7 @@ export function NotebookEditor({
                   {cell.executionStatus === 'success' ? '✓' : '✕'}
                 </span>
                 {cell.executionTime !== undefined && (
-                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono whitespace-nowrap">
                     {(cell.executionTime / 1000).toFixed(2)}s
                   </span>
                 )}
@@ -1430,8 +1466,8 @@ export function NotebookEditor({
           </div>
 
           {/* Cell content - takes up most space with minimal left/right padding */}
-          <div className="ml-20 mr-16 relative overflow-visible">
-            <div className={`border-2 rounded-lg overflow-hidden transition-all shadow-sm bg-white dark:bg-neutral-800 ${
+          <div className="ml-[72px] mr-4 relative overflow-visible">
+            <div className={`border-2 rounded-md overflow-hidden transition-all shadow-sm bg-white dark:bg-transparent ${
               selectedCellId === cell.id
                 ? 'border-blue-500 dark:border-blue-400 shadow-md'
                 : 'border-neutral-200 dark:border-neutral-700 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md'
@@ -1439,11 +1475,11 @@ export function NotebookEditor({
               {/* Play button - top left corner, always has space */}
               <button
                 onClick={() => executeCell(cell.id)}
-                className={`absolute top-1.5 left-1.5 z-10 w-7 h-7 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center justify-center text-neutral-600 dark:text-neutral-400 transition-colors opacity-0 group-hover:opacity-100 ${executingCells.has(cell.id) ? 'animate-spin opacity-100' : ''}`}
+                className={`absolute top-3 left-3 z-10 w-6 h-6 rounded-full bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center justify-center text-neutral-600 dark:text-neutral-400 transition-colors opacity-0 group-hover:opacity-100 border border-neutral-300 dark:border-neutral-600 ${executingCells.has(cell.id) ? 'animate-spin opacity-100' : ''}`}
                 title="Run cell (Shift+Enter)"
                 disabled={executingCells.has(cell.id)}
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
+                <Play className="w-3 h-3 fill-current" />
               </button>
 
               {/* Floating toolbar - top right */}
@@ -1546,7 +1582,7 @@ export function NotebookEditor({
               </div>
 
               {/* Editor */}
-              <div className="relative pl-12 pr-4">
+              <div className="relative pl-14 pr-6 min-h-[32px] flex items-center">
                 {cell.cell_type === 'markdown' && cell.isRendered ? (
                   <div
                     className="px-4 py-3 cursor-pointer markdown-content"
@@ -1648,14 +1684,15 @@ export function NotebookEditor({
                       lineNumbersMinChars: 0,
                       scrollBeyondLastLine: false,
                       wordWrap: 'on',
-                      padding: { top: 8, bottom: 8 },
+                      padding: { top: 4, bottom: 4 },
                       fontSize: 13,
                       lineHeight: 18,
                       automaticLayout: true,
                       scrollbar: {
                         vertical: 'hidden',
                         horizontal: 'hidden'
-                      }
+                      },
+                      renderLineHighlight: 'none'
                     }}
                     theme={currentTheme === 'dark' ? 'monokai' : 'light-plus'}
                   />
@@ -1908,7 +1945,7 @@ export function NotebookEditor({
         {/* Insert cell divider - appears between cells on hover */}
         <div className="group/insert relative py-2">
           <div className="absolute inset-0 flex items-center opacity-0 group-hover/insert:opacity-100 transition-opacity z-10">
-            <div className="flex-1 border-t border-neutral-300 dark:border-neutral-600 ml-20"></div>
+            <div className="flex-1 border-t border-neutral-300 dark:border-neutral-600 ml-[72px]"></div>
             <div className="flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-2 py-1 mx-2 shadow-sm">
               <button
                 onClick={() => addCell(index, 'code')}
@@ -1933,33 +1970,6 @@ export function NotebookEditor({
         </div>
         </div>
       ))}
-
-      {/* Final divider at bottom - hover to add cells */}
-      <div className="group/insert relative py-2">
-        <div className="absolute inset-0 flex items-center opacity-0 group-hover/insert:opacity-100 transition-opacity z-10">
-          <div className="flex-1 border-t border-neutral-300 dark:border-neutral-600 ml-20"></div>
-          <div className="flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-md px-2 py-1 mx-2 shadow-sm">
-            <button
-              onClick={() => addCell(cells.length - 1, 'code')}
-              className="px-3 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors flex items-center gap-1.5 group/btn"
-            >
-              <Code className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100" />
-              <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100">Code</span>
-            </button>
-
-            <div className="w-px h-3 bg-neutral-300 dark:border-neutral-600"></div>
-
-            <button
-              onClick={() => addCell(cells.length - 1, 'markdown')}
-              className="px-3 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded transition-colors flex items-center gap-1.5 group/btn"
-            >
-              <Type className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100" />
-              <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 group-hover/btn:text-neutral-900 dark:group-hover/btn:text-neutral-100">Markdown</span>
-            </button>
-          </div>
-          <div className="flex-1 border-t border-neutral-300 dark:border-neutral-600 mr-16"></div>
-        </div>
-      </div>
       </div>
     </div>
   );
