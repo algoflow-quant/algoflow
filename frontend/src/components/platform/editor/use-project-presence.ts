@@ -23,7 +23,9 @@ class GlobalPresenceManager {
 
   subscribe(listener: () => void) {
     this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
   }
 
   notify() {
@@ -91,7 +93,14 @@ class GlobalPresenceManager {
 
         Object.entries(state).forEach(([userId, presences]) => {
           if (Array.isArray(presences) && presences.length > 0) {
-            const presence = presences[0]
+            const presence = presences[0] as unknown as {
+              userId: string
+              userName: string
+              avatarUrl?: string
+              projectId: string
+              fileName?: string
+              color: string
+            }
             // IMPORTANT: Only add users who are actually tracking this specific project
             // Check that their projectId matches the channel's project
             if (presence && presence.userId && presence.projectId === projectId) {
@@ -145,26 +154,29 @@ class GlobalPresenceManager {
     // Check if location actually changed
     const locationChanged = this.currentProject !== projectId || this.currentFile !== fileName
     if (!locationChanged) {
-      console.log('[GlobalPresenceManager] Location unchanged, skipping update')
+      // Location unchanged, but still send a heartbeat to keep presence alive
+      // Don't log this to reduce console noise
       return // No change, don't update
     }
 
     const previousProject = this.currentProject
-    this.currentProject = projectId
-    this.currentFile = fileName || null
 
     console.log('[GlobalPresenceManager] Location changed from', previousProject, 'to', projectId)
 
-    // When switching projects, untrack from ALL channels to ensure clean state
-    if (previousProject !== projectId) {
-      // Untrack from all channels we're subscribed to
-      for (const [channelProjectId, channel] of this.channels.entries()) {
-        console.log('[GlobalPresenceManager] Untracking from channel:', channelProjectId)
-        await channel.untrack()
+    // When switching projects (not just files), untrack from the OLD project channel only
+    if (previousProject && previousProject !== projectId) {
+      const oldChannel = this.channels.get(previousProject)
+      if (oldChannel) {
+        console.log('[GlobalPresenceManager] Untracking from old project:', previousProject)
+        await oldChannel.untrack()
       }
     }
 
-    // Track on new project (only if we have one)
+    // Update current location AFTER untracking to avoid race conditions
+    this.currentProject = projectId
+    this.currentFile = fileName || null
+
+    // Track on new project (or update file in current project)
     if (projectId) {
       console.log('[GlobalPresenceManager] Updating presence for project:', projectId)
       await this.updateMyPresence()
@@ -287,6 +299,12 @@ export function useProjectPresence(currentProjectId: string | null, currentFileN
 
   // Update current location
   useEffect(() => {
+    // Only update location AND set up heartbeat if we have both projectId and filename
+    // When either is missing, this component is not actively tracking (e.g., inactive tab or wrong project)
+    if (!currentProjectId || !currentFileName) {
+      return // Don't track, don't set up heartbeat
+    }
+
     globalPresenceManager.setCurrentLocation(currentProjectId, currentFileName)
 
     // Set up heartbeat (just to keep presence alive, not change location)

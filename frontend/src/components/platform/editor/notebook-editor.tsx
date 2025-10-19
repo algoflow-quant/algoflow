@@ -233,10 +233,10 @@ export function NotebookEditor({
           cells: updatedCells.map(cell => ({
             cell_type: cell.cell_type,
             execution_count: cell.execution_count,
-            metadata: cell.metadata,
-            outputs: cell.outputs,
+            metadata: cell.metadata as Partial<ICellMetadata>,
+            outputs: cell.outputs as IOutput[],
             source: Array.isArray(cell.source) ? cell.source : [cell.source]
-          })),
+          })) as ICell[],
           metadata: {
             kernelspec: {
               display_name: 'Python 3',
@@ -1763,13 +1763,13 @@ export function NotebookEditor({
                                 e.stopPropagation();
                                 // Copy output to clipboard
                                 const textContent = output.output_type === 'stream'
-                                  ? (Array.isArray(output.text) ? output.text.join('') : output.text)
+                                  ? (Array.isArray(output.text) ? output.text.join('') : (output.text || ''))
                                   : output.output_type === 'execute_result'
-                                  ? (output.data['text/plain']
-                                      ? (Array.isArray(output.data['text/plain']) ? output.data['text/plain'].join('') : output.data['text/plain'])
+                                  ? (output.data?.['text/plain']
+                                      ? (Array.isArray(output.data['text/plain']) ? output.data['text/plain'].join('') : String(output.data['text/plain']))
                                       : '')
                                   : '';
-                                navigator.clipboard.writeText(textContent);
+                                navigator.clipboard.writeText(String(textContent));
                                 setOpenOutputMenu(null);
                               }}
                               className="w-full px-3 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
@@ -1822,113 +1822,108 @@ export function NotebookEditor({
                       )}
 
                       {/* Execute result (return values, expressions) */}
-                      {output.output_type === 'execute_result' && (
+                      {output.output_type === 'execute_result' && output.data && (
                         <div className="flex gap-3">
                           {/* Execution count badge */}
                           <div className="text-red-600 dark:text-red-400 font-mono text-sm flex-shrink-0">
                             Out[{output.execution_count}]:
                           </div>
                           <div className="flex-1">
-                            {/* HTML output (DataFrames, tables) */}
-                            {output.data['text/html'] && (
+                            {output.data['text/html'] ? (
                               <div
                                 className="jupyter-html-output max-w-full overflow-auto"
                                 dangerouslySetInnerHTML={{
                                   __html: Array.isArray(output.data['text/html'])
                                     ? output.data['text/html'].join('')
-                                    : output.data['text/html']
+                                    : String(output.data['text/html'])
                                 }}
                               />
-                            )}
-                            {/* Images (matplotlib, PIL) */}
-                            {output.data['image/png'] && (
+                            ) : null}
+                            {output.data['image/png'] ? (
                               <img
                                 src={`data:image/png;base64,${output.data['image/png']}`}
                                 alt="Output"
                                 className="max-w-full h-auto"
                               />
-                            )}
-                            {output.data['image/jpeg'] && (
+                            ) : null}
+                            {output.data['image/jpeg'] ? (
                               <img
                                 src={`data:image/jpeg;base64,${output.data['image/jpeg']}`}
                                 alt="Output"
                                 className="max-w-full h-auto"
                               />
-                            )}
-                            {output.data['image/svg+xml'] && (
+                            ) : null}
+                            {output.data['image/svg+xml'] ? (
                               <div dangerouslySetInnerHTML={{
                                 __html: Array.isArray(output.data['image/svg+xml'])
                                   ? output.data['image/svg+xml'].join('')
-                                  : output.data['image/svg+xml']
+                                  : String(output.data['image/svg+xml'])
                               }} />
-                            )}
-                            {/* Plain text fallback */}
-                            {output.data['text/plain'] && !output.data['text/html'] && !output.data['image/png'] && !output.data['image/jpeg'] && (
+                            ) : null}
+                            {output.data['text/plain'] && !output.data['text/html'] && !output.data['image/png'] && !output.data['image/jpeg'] ? (
                               <pre className="whitespace-pre-wrap font-mono text-sm text-neutral-800 dark:text-neutral-200 m-0">
                                 {Array.isArray(output.data['text/plain'])
                                   ? output.data['text/plain'].join('')
-                                  : output.data['text/plain']}
+                                  : String(output.data['text/plain'])}
                               </pre>
-                            )}
-                            {/* LaTeX/Math output */}
-                            {output.data['text/latex'] && (
+                            ) : null}
+                            {output.data['text/latex'] ? (
                               <div className="text-neutral-800 dark:text-neutral-200">
                                 {Array.isArray(output.data['text/latex'])
                                   ? output.data['text/latex'].join('')
-                                  : output.data['text/latex']}
+                                  : String(output.data['text/latex'])}
                               </div>
-                            )}
-                            {/* JSON output */}
-                            {output.data['application/json'] && (
+                            ) : null}
+                            {output.data['application/json'] ? (
                               <pre className="whitespace-pre-wrap font-mono text-xs bg-neutral-100 dark:bg-neutral-800 p-2 rounded text-neutral-800 dark:text-neutral-200">
                                 {JSON.stringify(output.data['application/json'], null, 2)}
                               </pre>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       )}
 
                       {/* Display data (plots, widgets, rich displays) */}
-                      {output.output_type === 'display_data' && (
+                      {output.output_type === 'display_data' && output.data && (
                         <div className="my-2">
-                          {output.data['text/html'] && (
+                          {output.data['text/html'] ? (
                             <div
                               className="jupyter-html-output max-w-full overflow-auto"
                               dangerouslySetInnerHTML={{
                                 __html: Array.isArray(output.data['text/html'])
                                   ? output.data['text/html'].join('')
-                                  : output.data['text/html']
+                                  : String(output.data['text/html'])
                               }}
                             />
-                          )}
-                          {output.data['image/png'] && (
+                          ) : null}
+                          {output.data['image/png'] ? (
                             <img
                               src={`data:image/png;base64,${output.data['image/png']}`}
                               alt="Plot"
                               className="max-w-full h-auto"
                             />
-                          )}
-                          {output.data['image/jpeg'] && (
+                          ) : null}
+                          {output.data['image/jpeg'] ? (
                             <img
                               src={`data:image/jpeg;base64,${output.data['image/jpeg']}`}
                               alt="Plot"
                               className="max-w-full h-auto"
                             />
-                          )}
-                          {output.data['image/svg+xml'] && (
+                          ) : null}
+                          {output.data['image/svg+xml'] ? (
                             <div dangerouslySetInnerHTML={{
                               __html: Array.isArray(output.data['image/svg+xml'])
                                 ? output.data['image/svg+xml'].join('')
-                                : output.data['image/svg+xml']
+                                : String(output.data['image/svg+xml'])
                             }} />
-                          )}
-                          {output.data['text/plain'] && !output.data['text/html'] && !output.data['image/png'] && (
+                          ) : null}
+                          {output.data['text/plain'] && !output.data['text/html'] && !output.data['image/png'] ? (
                             <pre className="whitespace-pre-wrap font-mono text-sm text-neutral-800 dark:text-neutral-200 m-0">
                               {Array.isArray(output.data['text/plain'])
                                 ? output.data['text/plain'].join('')
-                                : output.data['text/plain']}
+                                : String(output.data['text/plain'])}
                             </pre>
-                          )}
+                          ) : null}
                         </div>
                       )}
 

@@ -3,7 +3,7 @@
 import Editor from "@monaco-editor/react"
 import { useWorkspace } from "./workspace-context"
 import { useRef, useEffect, useState, useCallback } from "react"
-import { onThemeChange } from "./workspace-layout"
+import { onThemeChange, getActiveProjectId } from "./workspace-layout"
 import { useRealtimeCollab } from "./use-realtime-collab"
 import { useProjectPresence } from "./use-project-presence"
 import { uploadFile } from "@/lib/api/files"
@@ -28,6 +28,13 @@ export function CodeEditorPanel({ projectId, fileName }: CodeEditorPanelProps = 
   // Track if this tab is currently active
   const isActiveTab = currentFileName === activeFile
 
+  // Check if this editor belongs to the currently active workspace
+  // Use getActiveProjectId() which is set by the most recently mounted WorkspaceLayout
+  const activeWorkspaceProjectId = getActiveProjectId()
+  const isActiveProject = projectId === activeWorkspaceProjectId
+
+  // Removed debug logging - presence tracking is working correctly
+
   // When this editor is clicked/focused, make it the active file
   const handleEditorClick = () => {
     if (currentFileName && currentFileName !== activeFile) {
@@ -35,8 +42,17 @@ export function CodeEditorPanel({ projectId, fileName }: CodeEditorPanelProps = 
     }
   }
 
-  // Track file presence using the new system (only when we have a file name)
-  useProjectPresence(projectId || null, currentFileName || undefined)
+  // Track file presence using the new system
+  // IMPORTANT: Only track when ALL conditions are met:
+  // 1. This tab is active (isActiveTab)
+  // 2. We have a valid projectId
+  // 3. This editor's projectId matches the active workspace (isActiveProject)
+  // Pass null for BOTH params when we shouldn't track to prevent any presence broadcasting
+  const shouldTrack = isActiveTab && projectId && isActiveProject
+  useProjectPresence(
+    shouldTrack ? projectId : null,
+    shouldTrack ? currentFileName || undefined : undefined
+  )
 
   // Enable real-time collaboration only when editor is ready
   const { myColor } = useRealtimeCollab({
