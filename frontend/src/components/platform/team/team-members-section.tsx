@@ -29,6 +29,7 @@ import { getTeamMembers, inviteTeamMember, removeTeamMember, type TeamMember } f
 import { InviteMemberDialog } from "./invite-member-dialog"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { usePresenceData } from "@/components/platform/editor/use-project-presence"
 
 interface TeamMembersSectionProps {
   teamId: string
@@ -53,7 +54,19 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
   const [loading, setLoading] = React.useState(true)
   const [showInvite, setShowInvite] = React.useState(false)
   const [isKicked, setIsKicked] = React.useState(false)
-  const [onlineUsers, setOnlineUsers] = React.useState<Set<string>>(new Set())
+
+  // Use the read-only presence hook to get all active users
+  // This doesn't change the user's tracked location, only reads presence data
+  const { allUsers } = usePresenceData()
+
+  // Create a set of online user IDs from the global presence
+  const onlineUsers = React.useMemo(() => {
+    const online = new Set<string>()
+    allUsers.forEach(user => {
+      online.add(user.userId)
+    })
+    return online
+  }, [allUsers])
 
   React.useEffect(() => {
     if (teamId) {
@@ -158,89 +171,6 @@ export function TeamMembersSection({ teamId, teamName, currentUserId, isOwner }:
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, currentUserId])
-
-  // Track online status via presence
-  React.useEffect(() => {
-    if (!teamId) return
-
-    let cleanup: (() => void) | null = null
-
-    const setupPresence = async () => {
-      const supabase = createClient()
-      const channelName = `team-presence:${teamId}`
-
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', user.id)
-        .single()
-
-      const updateOnlineUsers = () => {
-        const state = presenceChannel.presenceState()
-        const online = new Set<string>()
-
-        Object.entries(state).forEach(([_key, presences]) => {
-          const presenceArray = presences as unknown as Array<{
-            user_id: string
-            user_name: string
-            online_at: string
-          }>
-          presenceArray.forEach((presence) => {
-            online.add(presence.user_id)
-          })
-        })
-
-        console.log('[TeamPresence] Online users:', Array.from(online))
-        setOnlineUsers(online)
-      }
-
-      const presenceChannel = supabase
-        .channel(channelName, {
-          config: {
-            presence: {
-              key: user.id // Use user ID as unique presence key
-            }
-          }
-        })
-        .on('presence', { event: 'sync' }, () => {
-          console.log('[TeamPresence] Sync event')
-          updateOnlineUsers()
-        })
-        .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-          console.log('[TeamPresence] User joined:', key, newPresences)
-          updateOnlineUsers()
-        })
-        .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-          console.log('[TeamPresence] User left:', key, leftPresences)
-          updateOnlineUsers()
-        })
-        .subscribe(async (status) => {
-          console.log('[TeamPresence] Status:', status)
-          if (status === 'SUBSCRIBED') {
-            await presenceChannel.track({
-              user_id: user.id,
-              user_name: profile?.name || 'Unknown',
-              online_at: new Date().toISOString()
-            })
-            console.log('[TeamPresence] Started tracking for user:', user.id)
-          }
-        })
-
-      cleanup = () => {
-        console.log('[TeamPresence] Cleaning up - untracking presence')
-        presenceChannel.untrack()
-      }
-    }
-
-    setupPresence()
-
-    return () => {
-      cleanup?.()
-    }
-  }, [teamId])
 
   const fetchMembers = async () => {
     try {

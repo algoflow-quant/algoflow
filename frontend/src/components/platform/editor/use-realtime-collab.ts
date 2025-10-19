@@ -37,7 +37,10 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
   const [sessionId] = useState(() => `${Date.now()}-${Math.random()}`) // Unique ID per tab/session
   const widgetsRef = useRef<import('monaco-editor').editor.IContentWidget[]>([])
   const suppressNextChangeRef = useRef(false)
+  const suppressNextChangePerCell = useRef<Map<string, boolean>>(new Map())
   const suppressCellChangesRef = useRef<Set<string>>(new Set()) // Track which cells should suppress next change
+  const pendingRemoteChanges = useRef<Map<string, any[]>>(new Map()) // Queue remote changes per cell/editor
+  const isApplyingRemoteChanges = useRef<Set<string>>(new Set()) // Track if we're applying remote changes
   const myIdRef = useRef<string>('')
   const userNameRef = useRef<string>('User')
   const avatarUrlRef = useRef<string | undefined>(undefined)
@@ -80,7 +83,7 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
       avatarUrlRef.current = profile?.avatar_url || undefined
 
       const channel = supabase.channel(roomName, {
-        config: { broadcast: { self: true } }
+        config: { broadcast: { self: false } } // Don't receive our own broadcasts
       })
 
       channelRef.current = channel
@@ -96,10 +99,79 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
 
           console.log('[Collab] Received text change:', payload)
 
-          // For notebooks - DISABLED to prevent infinite loop
-          // Only sync cursors, not text changes
+          // For notebooks - apply to the specific cell editor
           if (payload.cellId && editorRefsMap && editorRefsMap.size > 0) {
-            console.log('[Collab] Ignoring text change for notebook cell (text sync disabled):', payload.cellId)
+            console.log('[Collab] Queueing text change for notebook cell:', payload.cellId)
+            const cellEditor = editorRefsMap.get(payload.cellId)
+            const currentMonaco = monacoRef.current
+
+            if (!cellEditor || !currentMonaco) {
+              console.log('[Collab] Cell editor not found for:', payload.cellId)
+              return
+            }
+
+            // Queue the change instead of applying immediately
+            const queueKey = `cell-${payload.cellId}`
+            if (!pendingRemoteChanges.current.has(queueKey)) {
+              pendingRemoteChanges.current.set(queueKey, [])
+            }
+            pendingRemoteChanges.current.get(queueKey)!.push(payload)
+
+            // Apply queued changes with a small delay to batch them
+            setTimeout(() => {
+              const changes = pendingRemoteChanges.current.get(queueKey)
+              if (!changes || changes.length === 0) return
+
+              // Clear the queue
+              pendingRemoteChanges.current.set(queueKey, [])
+
+              // Check if we're currently typing - if so, delay application
+              if (isApplyingRemoteChanges.current.has(queueKey)) {
+                return
+              }
+
+              // Mark that we're applying changes
+              isApplyingRemoteChanges.current.add(queueKey)
+              suppressNextChangePerCell.current.set(payload.cellId, true)
+
+              // Save selection and position
+              const selection = cellEditor.getSelection()
+              const position = cellEditor.getPosition()
+
+              // Apply all queued changes
+              const edits = changes.map(change => ({
+                range: new currentMonaco.Range(
+                  change.range.startLineNumber,
+                  change.range.startColumn,
+                  change.range.endLineNumber,
+                  change.range.endColumn
+                ),
+                text: change.text,
+                forceMoveMarkers: false
+              }))
+
+              // Use pushEditOperations to maintain undo stack and cursor
+              cellEditor.getModel()?.pushEditOperations(
+                [],
+                edits,
+                () => null
+              )
+
+              // Restore position if we're in the same cell
+              if (position && cellIdRef.current === payload.cellId) {
+                cellEditor.setPosition(position)
+                if (selection) {
+                  cellEditor.setSelection(selection)
+                }
+              }
+
+              // Clean up
+              setTimeout(() => {
+                isApplyingRemoteChanges.current.delete(queueKey)
+                suppressNextChangePerCell.current.delete(payload.cellId)
+              }, 50)
+            }, 16) // Wait one frame (16ms) to batch changes
+
             return
           }
 
@@ -199,12 +271,52 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
 
     return () => {
       setChannelReady(false)
+      // IMPORTANT: Clear active users when switching channels/files
+      setActiveUsers([])
+
       if (channelRef.current) {
-        channelRef.current.unsubscribe()
-        channelRef.current = null
+        // Send a cursor clear event before unsubscribing
+        console.log('[Collab] Sending cursor clear before cleanup')
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'cursor',
+          payload: {
+            sessionId: sessionId,
+            userId: myIdRef.current,
+            userName: userNameRef.current,
+            avatarUrl: avatarUrlRef.current,
+            color: myColor,
+            cursor: null, // null cursor means remove it
+            cellId: null
+          }
+        })
+
+        // Give the message time to send before unsubscribing
+        setTimeout(() => {
+          if (channelRef.current) {
+            channelRef.current.unsubscribe()
+            channelRef.current = null
+          }
+        }, 50)
       }
     }
   }, [projectId, fileName, myColor])
+
+  // Clean up inactive users periodically (in case cleanup messages were missed)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveUsers(prev => {
+        const now = Date.now()
+        const INACTIVE_TIMEOUT = 30000 // 30 seconds
+        return prev.filter(user => {
+          // Keep users that were active recently
+          return user.lastActive && (now - user.lastActive) < INACTIVE_TIMEOUT
+        })
+      })
+    }, 5000) // Check every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [])
 
   // Setup editor listeners (updates when editor changes)
   useEffect(() => {
@@ -237,6 +349,119 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
 
     const setupEditorListeners = () => {
       const channel = channelRef.current
+
+      // For notebooks with multiple cells, set up listeners for all cell editors
+      if (editorRefsMap && editorRefsMap.size > 0 && channel) {
+        console.log('[Collab] Setting up listeners for notebook cells:', editorRefsMap.size)
+
+        // Store all listeners so we can clean them up later
+        const allListeners: Array<{ dispose: () => void }> = []
+
+        editorRefsMap.forEach((cellEditor, cellId) => {
+          console.log('[Collab] Setting up listeners for cell:', cellId)
+
+          // Helper function to send cursor update for this cell
+          const updateCellCursor = () => {
+            const position = cellEditor.getPosition()
+            if (position && channel) {
+              console.log('[Collab] Sending cursor update for cell:', cellId, position)
+              channel.send({
+                type: 'broadcast',
+                event: 'cursor',
+                payload: {
+                  sessionId: sessionId,
+                  userId: myIdRef.current,
+                  userName: userNameRef.current,
+                  avatarUrl: avatarUrlRef.current,
+                  color: myColor,
+                  cursor: { line: position.lineNumber, column: position.column },
+                  cellId: cellId
+                }
+              })
+            }
+          }
+
+          // Listen for text changes
+          const cellChangeListener = cellEditor.onDidChangeModelContent((e) => {
+            const queueKey = `cell-${cellId}`
+
+            // Check if we should suppress this change (it came from remote)
+            if (suppressNextChangePerCell.current.get(cellId)) {
+              // Don't delete the flag here - let the timeout handle it
+              return
+            }
+
+            // If we're applying remote changes, don't broadcast
+            if (isApplyingRemoteChanges.current.has(queueKey)) {
+              return
+            }
+
+            // Mark that we're locally editing
+            isApplyingRemoteChanges.current.add(queueKey)
+            setTimeout(() => {
+              isApplyingRemoteChanges.current.delete(queueKey)
+            }, 100) // Mark as typing for 100ms
+
+            // Broadcast the change with the cell ID
+            e.changes.forEach((change) => {
+              console.log('[Collab] Broadcasting cell change:', { cellId, change })
+              if (channel) {
+                channel.send({
+                  type: 'broadcast',
+                  event: 'change',
+                  payload: {
+                    sessionId: sessionId,
+                    userId: myIdRef.current,
+                    cellId: cellId,
+                    range: {
+                      startLineNumber: change.range.startLineNumber,
+                      startColumn: change.range.startColumn,
+                      endLineNumber: change.range.endLineNumber,
+                      endColumn: change.range.endColumn
+                    },
+                    text: change.text
+                  }
+                })
+              }
+            })
+
+            // Don't update cursor immediately after typing to avoid conflicts
+            // The cursor position will be updated by the cursor listener
+          })
+
+          // Throttle cursor updates to prevent flooding
+          let cursorUpdateTimeout: NodeJS.Timeout | null = null
+          const throttledUpdateCursor = () => {
+            if (cursorUpdateTimeout) {
+              clearTimeout(cursorUpdateTimeout)
+            }
+            cursorUpdateTimeout = setTimeout(() => {
+              updateCellCursor()
+            }, 50) // 50ms throttle
+          }
+
+          // Listen for cursor position changes
+          const cellCursorListener = cellEditor.onDidChangeCursorPosition(() => {
+            throttledUpdateCursor()
+          })
+
+          // Listen for focus events
+          const cellFocusListener = cellEditor.onDidFocusEditorText(() => {
+            console.log('[Collab] Cell editor focused:', cellId)
+            updateCellCursor()
+          })
+
+          allListeners.push(cellChangeListener)
+          allListeners.push(cellCursorListener)
+          allListeners.push(cellFocusListener)
+        })
+
+        // Store listeners for cleanup
+        changeListener = { dispose: () => allListeners.forEach(l => l.dispose()) }
+        return
+      }
+
+      // For regular files, use the single editor
       if (!channel || !currentEditor) {
         console.log('[Collab] Cannot setup editor listeners - no channel or editor')
         return
@@ -337,6 +562,25 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
     setupEditorListeners()
 
     return () => {
+      // Send cursor clear when disposing editor listeners
+      const channel = channelRef.current
+      if (channel && myIdRef.current) {
+        console.log('[Collab] Clearing cursor on editor dispose')
+        channel.send({
+          type: 'broadcast',
+          event: 'cursor',
+          payload: {
+            sessionId: sessionId,
+            userId: myIdRef.current,
+            userName: userNameRef.current,
+            avatarUrl: avatarUrlRef.current,
+            color: myColor,
+            cursor: null,
+            cellId: cellIdRef.current
+          }
+        })
+      }
+
       if (changeListener) changeListener.dispose()
       if (cursorListener) cursorListener.dispose()
       if (blurListener) blurListener.dispose()
@@ -643,6 +887,11 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
         })
       }
       widgetsRef.current = []
+
+      // Clean up cursor label elements from the DOM
+      document.querySelectorAll('[id^="remote-cursor-label-"]').forEach(label => {
+        label.remove()
+      })
     }
   }, [activeUsers])
 

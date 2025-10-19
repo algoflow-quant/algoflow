@@ -13,7 +13,7 @@ import {
   File as FileIcon
 } from "lucide-react"
 import { useEffect, useState, useRef, useMemo } from "react"
-import { usePresence } from "./use-presence"
+import { useProjectPresence } from "./use-project-presence"
 import { UserAvatars } from "./user-avatars"
 import { getProjectFiles, getFileContent, createFile, deleteFile, renameFile, uploadFile, type ProjectFile } from "@/lib/api/files"
 import { createClient } from "@/lib/supabase/client"
@@ -69,8 +69,8 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
   const [draggedFolder, setDraggedFolder] = useState<string | null>(null)
   const [dragOverPath, setDragOverPath] = useState<string | null>(null)
 
-  // Track presence for avatar display
-  const { fileUsers } = usePresence(projectId || '')
+  // Track presence for avatar display using the new system (no file name needed - we just read)
+  const { fileUsersMap } = useProjectPresence(projectId || null)
 
   // Dialog states
   const [showCreateFileDialog, setShowCreateFileDialog] = useState(false)
@@ -282,7 +282,6 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
         f.name === `${folderPath}/.gitkeep` || f.name.startsWith(`${folderPath}/`)
       )
 
-      console.log('[FileTreePanel] Deleting folder:', folderPath, 'Files to delete:', filesToDelete.map(f => f.name))
 
       // Delete all files in the folder
       for (const file of filesToDelete) {
@@ -364,7 +363,6 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
       try {
         // Prevent dropping folder into itself or its children
         if (targetFolderPath?.startsWith(draggedFolder + '/') || targetFolderPath === draggedFolder) {
-          console.log('[FileTreePanel] Cannot move folder into itself')
           setDraggedFolder(null)
           return
         }
@@ -378,7 +376,6 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
             f.name.startsWith(`${draggedFolder}/`)
           )
 
-          console.log('[FileTreePanel] Moving folder:', draggedFolder, 'to:', newFolderPath, 'Files:', filesToMove.length)
 
           // Move each file
           for (const file of filesToMove) {
@@ -677,11 +674,8 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
       const isDraggingThis = draggedFile?.name === node.file.name
 
       // Get users editing this file
-      const usersEditingFile = fileUsers[node.path] || []
-
-      if (usersEditingFile.length > 0) {
-        console.log('[FileTree] File has users:', node.path, usersEditingFile.length, usersEditingFile)
-      }
+      // File presence tracks by just the name (e.g., "main.py"), not the full path
+      const usersEditingFile = fileUsersMap.get(node.file.name) || []
 
       return (
         <ContextMenu key={node.path}>
@@ -857,13 +851,11 @@ export function FileTreePanel({ projectId }: FileTreePanelProps = {}) {
                 // Use array from context to force re-render when it changes
                 const isChecked = panelManager.visiblePanels.has(id)
                 const arrayKey = panelManager.visiblePanelsArray.join('-')
-                console.log('[FileTree ContextMenu] Rendering panel:', id, 'checked:', isChecked, 'visiblePanels:', panelManager.visiblePanelsArray)
                 return (
                   <ContextMenuCheckboxItem
                     key={`${id}-${arrayKey}`}
                     checked={isChecked}
                     onCheckedChange={() => {
-                      console.log('[FileTree ContextMenu] Toggling panel:', id, 'was checked:', isChecked)
                       panelManager.togglePanel(id)
                     }}
                   >

@@ -63,7 +63,7 @@ import { RenameProjectDialog } from "@/components/platform/project/rename-projec
 import { TeamMembersSection } from "@/components/platform/team/team-members-section"
 import { TeamSettingsDialog } from "@/components/platform/team/team-settings-dialog"
 import { UserAvatars } from "@/components/platform/editor/user-avatars"
-import { usePresence } from "@/components/platform/editor/use-presence"
+import { useSidebarPresence, useProjectPresence } from "@/components/platform/editor/use-project-presence"
 
 // Project menu item with presence avatars
 function ProjectMenuItem({
@@ -74,8 +74,7 @@ function ProjectMenuItem({
   isOwner,
   onRename,
   onDelete,
-  allPresenceUsers,
-  currentProjectId
+  projectUsers
 }: {
   project: Project
   selectedTeam: Team | null
@@ -84,7 +83,7 @@ function ProjectMenuItem({
   isOwner: boolean
   onRename: () => void
   onDelete: () => void
-  allPresenceUsers: Array<{
+  projectUsers: Array<{
     userId: string
     userName: string
     avatarUrl?: string
@@ -92,22 +91,7 @@ function ProjectMenuItem({
     fileName?: string
     color: string
   }>
-  currentProjectId: string | null
 }) {
-  // Only show presence for the currently active project in the URL
-  const projectUsers = React.useMemo(() => {
-    // If this is not the current project, don't show any users
-    if (currentProjectId !== project.id) {
-      return []
-    }
-
-    const usersInProject = allPresenceUsers.filter(u => u.projectId === project.id)
-    // Deduplicate by userId - keep only the first occurrence of each user
-    const uniqueUsers = Array.from(
-      new Map(usersInProject.map(u => [u.userId, u])).values()
-    )
-    return uniqueUsers
-  }, [allPresenceUsers, project.id, currentProjectId])
   const [showUsersList, setShowUsersList] = React.useState(false)
 
   return (
@@ -217,12 +201,26 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
   // Extract current project ID from URL pathname (e.g., /lab/teamId/projectId)
   const currentProjectId = React.useMemo(() => {
     const parts = pathname?.split('/') || []
-    return parts.length >= 4 ? parts[3] : null
+    const projectId = parts.length >= 4 ? parts[3] : null
+    console.log('[Sidebar] Current project ID from pathname:', projectId, 'pathname:', pathname)
+    return projectId
   }, [pathname])
 
-  // Read global presence state - the hook will return ALL users from the global state
-  // Even though we pass trackPresence=false, it still subscribes to state changes
-  const { allUsers: allPresenceUsers } = usePresence('', '', false)
+  // Get all project IDs to subscribe to, plus a global presence channel
+  const projectIds = React.useMemo(() => {
+    const ids = projects?.map(p => p.id) || []
+    // Add global presence channel to track all online users
+    return ['global-presence', ...ids]
+  }, [projects])
+
+  // Subscribe to presence for ALL projects (including global)
+  const { usersByProject } = useSidebarPresence(projectIds)
+
+  // Track our own presence on the current project (or just track globally if no project)
+  // This ensures users show as "online" even when just browsing the app
+  const presenceProjectId = currentProjectId || 'global-presence'
+  console.log('[Sidebar] Calling useProjectPresence with:', presenceProjectId, 'currentProjectId:', currentProjectId)
+  useProjectPresence(presenceProjectId)
   const [showRenameTeam, setShowRenameTeam] = React.useState(false)
   const [showTeamSettings, setShowTeamSettings] = React.useState(false)
   const [showRenameProject, setShowRenameProject] = React.useState<string | null>(null)
@@ -812,8 +810,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
                           isOwner={isOwner}
                           onRename={() => setShowRenameProject(project.id)}
                           onDelete={() => handleDeleteProject(project.id, project.name)}
-                          allPresenceUsers={allPresenceUsers}
-                          currentProjectId={currentProjectId}
+                          projectUsers={usersByProject.get(project.id) || []}
                         />
                       )
                     })}
