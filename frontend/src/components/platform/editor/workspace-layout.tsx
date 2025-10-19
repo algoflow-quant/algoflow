@@ -64,6 +64,9 @@ let currentTheme: string = "dark"
 let globalLayoutRef: { current: GoldenLayout | null } | null = null
 let globalPanelManager: ReturnType<typeof usePanelManager> | null = null
 
+// Track active project to prevent stale workspaces from rendering
+let activeProjectId: string | undefined
+
 // Global theme change listeners
 const themeChangeListeners: Set<(theme: string) => void> = new Set()
 
@@ -83,6 +86,10 @@ function notifyThemeChange(theme: string) {
 
 export function getGlobalLayout(): GoldenLayout | null {
   return globalLayoutRef?.current || null
+}
+
+export function getActiveProjectId(): string | undefined {
+  return activeProjectId
 }
 
 Object.keys(PANEL_REGISTRY).forEach((panelId) => {
@@ -162,9 +169,6 @@ interface WorkspaceLayoutProps {
 }
 
 export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
-  // Update global projectId when it changes
-  currentProjectId = projectId
-
   const layoutRef = useRef<GoldenLayout | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const panelManager = usePanelManager(layoutRef)
@@ -175,6 +179,14 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
 
   // Extract callbacks to avoid dependency issues
   const { onPanelAdded, onPanelRemoved } = panelManager
+
+  // Set this workspace as active when it mounts
+  // Simply set the active project - don't clear it on unmount to avoid React strict mode issues
+  useEffect(() => {
+    console.log(`[WorkspaceLayout] Setting active project to ${projectId}`)
+    currentProjectId = projectId
+    activeProjectId = projectId
+  }, [projectId])
 
   // Notify all panels when theme changes
   useEffect(() => {
@@ -217,6 +229,8 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
     if (!containerRef.current) return
 
     const container = containerRef.current
+
+    console.log(`[WorkspaceLayout] Creating new layout for project ${projectId}`)
 
     // Initialize GoldenLayout
     const layout = new GoldenLayout(container)
@@ -319,10 +333,17 @@ export function WorkspaceLayout({ projectId }: WorkspaceLayoutProps) {
 
     // Cleanup
     return () => {
+      console.log(`[WorkspaceLayout] Destroying layout for project ${projectId}`)
       resizeObserver.disconnect()
+
+      // Clear global references if this is the current layout
+      if (globalLayoutRef === layoutRef) {
+        globalLayoutRef = null
+      }
+
       layout.destroy()
     }
-  }, [onPanelAdded, onPanelRemoved])
+  }, [onPanelAdded, onPanelRemoved, projectId])
 
   // Create a new context value when visiblePanelsArray changes to trigger re-renders
   // Use the array join as a key to force re-creation when it changes

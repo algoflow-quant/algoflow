@@ -15,6 +15,16 @@ interface CollabUser {
   lastActive?: number // Timestamp of last activity
 }
 
+interface RemoteChange {
+  range: {
+    startLineNumber: number
+    startColumn: number
+    endLineNumber: number
+    endColumn: number
+  }
+  text: string
+}
+
 interface UseRealtimeCollabProps {
   projectId: string
   fileName: string
@@ -39,7 +49,7 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
   const suppressNextChangeRef = useRef(false)
   const suppressNextChangePerCell = useRef<Map<string, boolean>>(new Map())
   const suppressCellChangesRef = useRef<Set<string>>(new Set()) // Track which cells should suppress next change
-  const pendingRemoteChanges = useRef<Map<string, unknown[]>>(new Map()) // Queue remote changes per cell/editor
+  const pendingRemoteChanges = useRef<Map<string, RemoteChange[]>>(new Map()) // Queue remote changes per cell/editor
   const isApplyingRemoteChanges = useRef<Set<string>>(new Set()) // Track if we're applying remote changes
   const myIdRef = useRef<string>('')
   const userNameRef = useRef<string>('User')
@@ -561,7 +571,35 @@ export function useRealtimeCollab({ projectId, fileName, editor, monaco, cellId,
 
     setupEditorListeners()
 
+    // Set up heartbeat to keep cursor alive
+    // This ensures the cursor stays visible even when not moving
+    const heartbeatInterval = setInterval(() => {
+      const currentEditor = editorRef.current
+      const channel = channelRef.current
+
+      if (currentEditor && channel && myIdRef.current) {
+        const position = currentEditor.getPosition()
+        if (position) {
+          channel.send({
+            type: 'broadcast',
+            event: 'cursor',
+            payload: {
+              sessionId: sessionId,
+              userId: myIdRef.current,
+              userName: userNameRef.current,
+              avatarUrl: avatarUrlRef.current,
+              color: myColor,
+              cursor: { line: position.lineNumber, column: position.column },
+              cellId: cellIdRef.current
+            }
+          })
+        }
+      }
+    }, 10000) // Send heartbeat every 10 seconds
+
     return () => {
+      clearInterval(heartbeatInterval)
+
       // Send cursor clear when disposing editor listeners
       const channel = channelRef.current
       if (channel && myIdRef.current) {

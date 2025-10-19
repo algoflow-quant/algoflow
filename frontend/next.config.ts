@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: false, // Disabled to prevent double-mounting in development
   async rewrites() {
     return [
       {

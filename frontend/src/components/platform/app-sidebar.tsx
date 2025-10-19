@@ -63,7 +63,7 @@ import { RenameProjectDialog } from "@/components/platform/project/rename-projec
 import { TeamMembersSection } from "@/components/platform/team/team-members-section"
 import { TeamSettingsDialog } from "@/components/platform/team/team-settings-dialog"
 import { UserAvatars } from "@/components/platform/editor/user-avatars"
-import { useSidebarPresence, useProjectPresence } from "@/components/platform/editor/use-project-presence"
+import { useSidebarPresence } from "@/components/platform/editor/use-project-presence"
 
 // Project menu item with presence avatars
 function ProjectMenuItem({
@@ -216,11 +216,6 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
   // Subscribe to presence for ALL projects (including global)
   const { usersByProject } = useSidebarPresence(projectIds)
 
-  // Track our own presence on the current project (or just track globally if no project)
-  // This ensures users show as "online" even when just browsing the app
-  const presenceProjectId = currentProjectId || 'global-presence'
-  console.log('[Sidebar] Calling useProjectPresence with:', presenceProjectId, 'currentProjectId:', currentProjectId)
-  useProjectPresence(presenceProjectId)
   const [showRenameTeam, setShowRenameTeam] = React.useState(false)
   const [showTeamSettings, setShowTeamSettings] = React.useState(false)
   const [showRenameProject, setShowRenameProject] = React.useState<string | null>(null)

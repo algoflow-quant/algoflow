@@ -135,6 +135,36 @@ export function TeamSelectionContent() {
     }
   }
 
+  // Check if user is authenticated
+  if (!user && !loading) {
+    return (
+      <div className="relative flex items-center justify-center flex-1 overflow-hidden bg-gradient-to-br from-background via-brand-blue/20 to-background">
+        <FlickeringGrid
+          squareSize={4}
+          gridGap={6}
+          color="rgb(60, 160, 255)"
+          maxOpacity={0.8}
+          flickerChance={0.3}
+          className="absolute inset-0 w-full h-full [mask-image:radial-gradient(1000px_circle_at_center,white,transparent)]"
+        />
+        <Card className="relative w-full max-w-md z-10">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Not Authenticated</CardTitle>
+            <CardDescription>Please log in to continue</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 text-center space-y-4">
+            <Button
+              onClick={() => router.push('/login')}
+              className="w-full bg-brand-blue hover:bg-brand-blue-dark"
+            >
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="relative flex items-center justify-center flex-1 overflow-hidden bg-gradient-to-br from-background via-brand-blue/20 to-background">
