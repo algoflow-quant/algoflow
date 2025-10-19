@@ -33,8 +33,6 @@ export function CodeEditorPanel({ projectId, fileName }: CodeEditorPanelProps = 
   const activeWorkspaceProjectId = getActiveProjectId()
   const isActiveProject = projectId === activeWorkspaceProjectId
 
-  // Removed debug logging - presence tracking is working correctly
-
   // When this editor is clicked/focused, make it the active file
   const handleEditorClick = () => {
     if (currentFileName && currentFileName !== activeFile) {
@@ -49,6 +47,12 @@ export function CodeEditorPanel({ projectId, fileName }: CodeEditorPanelProps = 
   // 3. This editor's projectId matches the active workspace (isActiveProject)
   // Pass null for BOTH params when we shouldn't track to prevent any presence broadcasting
   const shouldTrack = isActiveTab && projectId && isActiveProject
+
+  // Debug logging
+  useEffect(() => {
+    console.log(`[CodeEditorPanel] ${currentFileName}: shouldTrack=${shouldTrack}, passedProjectId=${shouldTrack ? projectId : 'NULL'}, passedFileName=${shouldTrack ? currentFileName : 'NULL'}`)
+  }, [currentFileName, shouldTrack, projectId])
+
   useProjectPresence(
     shouldTrack ? projectId : null,
     shouldTrack ? currentFileName || undefined : undefined

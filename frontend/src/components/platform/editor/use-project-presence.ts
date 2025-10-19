@@ -308,9 +308,11 @@ export function useProjectPresence(currentProjectId: string | null, currentFileN
     globalPresenceManager.setCurrentLocation(currentProjectId, currentFileName)
 
     // Set up heartbeat (just to keep presence alive, not change location)
+    // In development, use longer interval to save bandwidth
+    const heartbeatInterval = process.env.NODE_ENV === 'development' ? 60000 : 30000
     const interval = setInterval(() => {
       globalPresenceManager.heartbeat()
-    }, 10000)
+    }, heartbeatInterval)
 
     return () => clearInterval(interval)
   }, [currentProjectId, currentFileName])
