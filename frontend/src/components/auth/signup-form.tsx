@@ -1,8 +1,3 @@
-"use client"
-
-import { useState } from "react"
-import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -18,198 +13,68 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { BorderBeam } from "@/components/ui/border-beam"
+import Link from "next/link"
+import { signup } from "@/app/(auth)/login/actions"
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
-  const [fullName, setFullName] = useState("")
-  const [username, setUsername] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      setLoading(false)
-      return
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long")
-      setLoading(false)
-      return
-    }
-
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            username: username,
-          },
-        },
-      })
-
-      if (error) {
-        console.error("Signup error:", error)
-        setError(error instanceof Error ? error.message : String(error) || "Failed to sign up. Please check your connection.")
-        setLoading(false)
-      } else {
-        console.log("Signup success:", data)
-        setSuccess(true)
-        setLoading(false)
-      }
-    } catch (err) {
-      console.error("Unexpected signup error:", err)
-      setError("Network error: Unable to connect to authentication service. Please ensure Supabase is running.")
-      setLoading(false)
-    }
-  }
-
-  if (success) {
-    return (
-      <Card {...props} className="relative">
-        <BorderBeam
-          size={250}
-          duration={12}
-          colorFrom="var(--brand-blue)"
-          colorTo="var(--brand-blue-light)"
-        />
-        <CardHeader>
-          <CardTitle>Account created!</CardTitle>
-          <CardDescription>
-            Your account has been created and verified
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Your email has been automatically confirmed. You can now sign in to your account.
-          </p>
-          <Button
-            className="w-full bg-brand-blue hover:bg-brand-blue-dark"
-            asChild
-          >
-            <Link href="/login">Go to Login</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card {...props} className="relative">
-      <BorderBeam
-        size={250}
-        duration={12}
-        colorFrom="var(--brand-blue)"
-        colorTo="var(--brand-blue-light)"
-      />
+    <Card className="bg-muted/50 backdrop-blur-sm" {...props}>
       <CardHeader>
-        <CardTitle>Create your account</CardTitle>
+        <CardTitle>Create an account</CardTitle>
         <CardDescription>
-          Join AlgoFlow and start building strategies
+          Enter your information below to create your account
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSignup}>
+        <form>
           <FieldGroup>
-            {error && (
-              <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
             <Field>
               <FieldLabel htmlFor="name">Full Name</FieldLabel>
-              <Input
-                id="name"
-                type="text"
-                placeholder="John Doe"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <Input id="name" name="name" type="text" placeholder="John Doe" required />
             </Field>
             <Field>
               <FieldLabel htmlFor="username">Username</FieldLabel>
-              <Input
-                id="username"
-                type="text"
-                placeholder="johndoe"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <Input id="username" name="username" type="text" placeholder="johndoe" required />
               <FieldDescription>
-                Your unique username for the platform
+                This will be your unique identifier on the platform.
               </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input
                 id="email"
+                name="email"
                 type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="m@example.com"
                 required
-                disabled={loading}
               />
+              <FieldDescription>
+                We&apos;ll use this to contact you. We will not share your email
+                with anyone else.
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <Input id="password" name="password" type="password" required />
               <FieldDescription>
-                Must be at least 8 characters long
+                Must be at least 8 characters long.
               </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="confirm-password">
                 Confirm Password
               </FieldLabel>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <Input id="confirm-password" type="password" required />
+              <FieldDescription>Please confirm your password.</FieldDescription>
             </Field>
-            <Field>
-              <Button
-                type="submit"
-                className="w-full bg-brand-blue hover:bg-brand-blue-dark"
-                disabled={loading}
-              >
-                {loading ? "Creating account..." : "Create Account"}
-              </Button>
-              <FieldDescription className="text-center">
-                Already have an account?{" "}
-                <Link href="/login" className="text-brand-blue hover:underline">
-                  Sign in
-                </Link>
-              </FieldDescription>
-            </Field>
+            <FieldGroup>
+              <Field>
+                <Button formAction={signup} className="w-full">Create Account</Button>
+                <FieldDescription className="px-6 text-center">
+                  Already have an account? <Link href="/login" className="underline">Sign in</Link>
+                </FieldDescription>
+              </Field>
+            </FieldGroup>
           </FieldGroup>
         </form>
       </CardContent>
