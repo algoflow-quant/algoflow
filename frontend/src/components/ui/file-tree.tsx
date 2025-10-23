@@ -132,7 +132,7 @@ const Tree = forwardRef<HTMLDivElement, TreeViewProps>(
       if (initialSelectedId) {
         expandSpecificTargetedElements(elements, initialSelectedId)
       }
-    }, [initialSelectedId, elements, expandSpecificTargetedElements])
+    }, [initialSelectedId, elements])
 
     const direction = dir === "rtl" ? "rtl" : "ltr"
 
@@ -220,7 +220,7 @@ const Folder = forwardRef<
       children,
       ...props
     },
-    _ref
+    ref
   ) => {
     const {
       direction,
@@ -317,10 +317,7 @@ const File = forwardRef<
           direction === "rtl" ? "rtl" : "ltr",
           className
         )}
-        onClick={() => {
-          selectItem(value)
-          handleSelect?.(value)
-        }}
+        onClick={() => selectItem(value)}
         {...props}
       >
         {fileIcon ?? <FileIcon className="size-4" />}
@@ -355,14 +352,14 @@ const CollapseButton = forwardRef<
 
   const closeAll = useCallback(() => {
     setExpandedItems?.([])
-  }, [setExpandedItems])
+  }, [])
 
   useEffect(() => {
     console.log(expandAll)
     if (expandAll) {
       expendAllTree(elements)
     }
-  }, [expandAll, elements, expendAllTree])
+  }, [expandAll])
 
   return (
     <Button

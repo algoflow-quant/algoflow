@@ -1,8 +1,11 @@
-export default function LandingPage() {
+import Hero from "@/components/marketing/sections/Hero"
+import BentoSection from "@/components/marketing/sections/bento/Bento"
+
+export default function HomePage() {
   return (
-    <div className="min-h-screen">
-      <h1>AlgoFlow - Landing Page</h1>
-      <p>Public marketing page without sidebar</p>
-    </div>
-  );
+    <>
+      <Hero />
+      <BentoSection />
+    </>
+  )
 }

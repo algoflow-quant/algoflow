@@ -1,18 +1,14 @@
-import { ReactNode } from 'react';
-import NavBar from '@/components/layout/navigation/navbar';
+import Header from "@/components/marketing/layout/header/Header"
 
 export default function MarketingLayout({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen flex flex-col">
-        <header>
-            <NavBar />
-        </header>
-        
-        <main className="flex-1">{children}</main>
-    </div>
-  );
+    <>
+      <Header />
+      <main>{children}</main>
+    </>
+  )
 }
