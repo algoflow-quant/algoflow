@@ -25,7 +25,7 @@ export default function Hero() {
           staticity={50}
         />
       </motion.div>
-      <div className="container mx-auto px-4 py-10 flex flex-col items-center justify-center gap-4 max-w-5xl relative z-10">
+      <div className="container mx-auto px-4 py-10 flex flex-col items-center justify-center gap-4 max-w-6xl relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -69,7 +69,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 2.5 }}
-          className="relative mt-16 w-[152%] -mx-[2.5%]"
+          className="relative mt-16 w-[122%] -mx-[2.5%]"
         >
           {/* Ellipse gradient background */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1600px] h-[800px] bg-blue-600 rounded-[50%] blur-[150px] opacity-50 -z-10" />

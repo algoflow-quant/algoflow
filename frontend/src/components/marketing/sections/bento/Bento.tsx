@@ -68,12 +68,12 @@ const features = [
 
 export default function BentoSection() {
   return (
-    <div className="container mx-auto px-4 py-20">
+    <div className="container mx-auto px-4 py-20 max-w-7xl">
       <div className="mb-12 text-center">
         <h2 className="text-4xl font-bold mb-4">Everything you need to build winning strategies</h2>
         <p className="text-xl text-muted-foreground">Right in your browser</p>
       </div>
-      <BentoGrid className="lg:grid-rows-2 lg:grid-cols-4 h-[850px]">
+      <BentoGrid className="lg:grid-rows-2 lg:grid-cols-4 min-h-[850px] h-auto">
         {features.map((feature) => (
           <BentoCard key={feature.name} {...feature} />
         ))}
