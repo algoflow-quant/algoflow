@@ -19,3 +19,8 @@ apache-airflow-providers-postgres
 
 # Data quality
 great_expectations
+
+# Testing
+pytest
+pytest-mock
+pytest-cov
