@@ -182,7 +182,12 @@ export default function AlgorithmLibraryAnimation() {
       </div>
 
       {/* Pagination arrows */}
-      <div className="flex items-center justify-center gap-3">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isHovered ? 1 : 0 }}
+        transition={{ duration: 0.3, delay: isHovered ? 0.2 : 0 }}
+        className="flex items-center justify-center gap-3"
+      >
         <div className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 transition-colors pointer-events-none">
           <svg className="w-3 h-3 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -206,7 +211,7 @@ export default function AlgorithmLibraryAnimation() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
-      </div>
+      </motion.div>
 
       {/* Animated Cursor - same style as strategy builder */}
       <motion.div
