@@ -1,7 +1,38 @@
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/utils/supabase/middleware'
+import { updateSession } from '@/server/supabase/middleware'
+import arcjet, { detectBot, shield } from "@arcjet/next"
+import { type NextRequest, NextResponse } from 'next/server'
 
+// Arcjet protection rules
+const aj = arcjet({
+  key: process.env.ARCJET_KEY!,
+  rules: [
+    // Bot detection - block automated clients
+    detectBot({
+      mode: "LIVE",
+      allow: [
+        "CATEGORY:SEARCH_ENGINE", // Google, Bing, etc
+      ],
+    }),
+    // Shield WAF - protect against common attacks
+    shield({
+      mode: "LIVE",
+    }),
+  ],
+})
+
+// Custom middleware combining Arcjet + Supabase
 export async function middleware(request: NextRequest) {
+  // First run Arcjet protection
+  const decision = await aj.protect(request)
+
+  if (decision.isDenied()) {
+    return NextResponse.json(
+      { error: "Forbidden", reason: decision.reason },
+      { status: 403 }
+    )
+  }
+
+  // Then run Supabase session update
   return await updateSession(request)
 }
 

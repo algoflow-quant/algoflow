@@ -51,7 +51,7 @@ const BentoCard = ({
       // light styles
       "bg-muted/50 border",
       // dark styles
-      "dark:bg-muted/50 transform-gpu dark:border",
+      "dark:bg-muted/30 transform-gpu dark:border",
       className
     )}
     {...props}
