@@ -7,9 +7,13 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     avatar_url TEXT,
     bio TEXT,
     role TEXT NOT NULL DEFAULT 'standard' CHECK (role IN ('standard', 'educator', 'admin', 'owner')),
+    last_seen_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
+
+-- Create index for online status queries
+CREATE INDEX idx_profiles_last_seen ON public.profiles(last_seen_at);
 
 -- Enable Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -18,13 +22,17 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Profiles are viewable by everyone"
     ON public.profiles FOR SELECT USING (true);
 
--- Regular users can update their own profile but NOT their role
+-- Regular users can update ONLY: username, full_name, avatar_url, bio, last_seen_at, updated_at
 CREATE POLICY "Users can update their own profile"
     ON public.profiles FOR UPDATE
     USING (auth.uid() = id)
     WITH CHECK (
-        auth.uid() = id
-        AND role = (SELECT role FROM profiles WHERE id = auth.uid())
+        auth.uid() = id AND
+        -- Protected fields must remain unchanged
+        id = (SELECT id FROM profiles WHERE id = auth.uid()) AND
+        email = (SELECT email FROM profiles WHERE id = auth.uid()) AND
+        role = (SELECT role FROM profiles WHERE id = auth.uid()) AND
+        created_at = (SELECT created_at FROM profiles WHERE id = auth.uid())
     );
 
 -- Admins can update any user's profile including roles

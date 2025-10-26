@@ -45,7 +45,7 @@ export default function OrgSidebar() {
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', href: `/lab/${orgId}` },
         { icon: FolderKanban, label: 'Projects', href: `/lab/${orgId}/projects` },
-        { icon: Users, label: 'Teams', href: `/lab/${orgId}/teams` },
+        { icon: Users, label: 'Members', href: `/lab/${orgId}/members` },
         { icon: BarChart3, label: 'Usage', href: `/lab/${orgId}/usage` },
         { icon: DollarSign, label: 'Billing', href: `/lab/${orgId}/billing` },
         { icon: Settings, label: 'Settings', href: `/lab/${orgId}/settings` },
