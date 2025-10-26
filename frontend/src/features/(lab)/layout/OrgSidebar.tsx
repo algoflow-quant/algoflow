@@ -1,11 +1,12 @@
 'use client'
 
 // React imports
-import React, { useState, useTransition } from 'react'
+import React, { useState } from 'react'
 
 // Next js imports
 import Link from 'next/link'
 import { useParams, usePathname, useRouter } from 'next/navigation'
+import { useNavigation } from '@/app/lab/[organizationId]/layout'
 
 // Icon imports
 import { Settings, DollarSign, BarChart3, Users, FolderKanban, LayoutDashboard, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -25,18 +26,18 @@ export default function OrgSidebar() {
     const pathname = usePathname() // gets the whole pathname url
     const router = useRouter()
     const orgId = params?.organizationId as string // get the orgID
+    const { isPending, startNavigation } = useNavigation()
 
     const [mode, setMode] = useState<SidebarMode>('hover') // set the mode to hover
     const [isHovered, setIsHovered] = useState(false) // set is hovered to false initially
     const [isPopoverOpen, setIsPopoverOpen] = useState(false) // control popover state
-    const [isPending, startTransition] = useTransition()
     const [pendingPath, setPendingPath] = useState<string | null>(null)
 
     const isExpanded = mode === 'open' || (mode === 'hover' && isHovered) // simple is expanded or not
 
     const handleNavigation = (href: string) => {
         setPendingPath(href)
-        startTransition(() => {
+        startNavigation(() => {
             router.push(href)
         })
     }

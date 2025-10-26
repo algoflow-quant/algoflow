@@ -12,9 +12,13 @@ import { createClient } from '@/server/supabase/client'
 // Server action
 import { getMembers } from '../actions/getMembers'
 
+// Current user
+import { useCurrentUser } from './useCurrentUser'
+
 export function useMembers(organizationId: string) {
   const queryClient = useQueryClient() // tanstack client
   const supabase = useMemo(() => createClient(), []) // supabase client (memoized)
+  const { user } = useCurrentUser()
 
   // Initial fetch
   const query = useQuery({
@@ -25,6 +29,7 @@ export function useMembers(organizationId: string) {
 
   // Realtime subscription for member changes
   useEffect(() => {
+    if (!user) return
     const channel = supabase
       .channel(`org-members-${organizationId}`)
       .on(
@@ -35,9 +40,24 @@ export function useMembers(organizationId: string) {
           table: 'organization_members',
           filter: `organization_id=eq.${organizationId}`,
         },
-        (payload) => {
-          console.log('Member change:', payload)
-          
+        async (payload) => {
+          // Check if current user was deleted - need to verify by checking current membership
+          if (payload.eventType === 'DELETE' && user) {
+            // Query to check if current user still exists in this organization
+            const { data: membership } = await supabase
+              .from('organization_members')
+              .select('id')
+              .eq('organization_id', organizationId)
+              .eq('user_id', user.id)
+              .maybeSingle()
+
+            // If no membership found, user was removed - redirect
+            if (!membership) {
+              window.location.href = '/lab'
+              return // Don't invalidate queries since we're redirecting
+            }
+          }
+
           // Invalidate and refetch when any member changes (causes server ISR)
           queryClient.invalidateQueries({
             queryKey: ['organization-members', organizationId],
@@ -49,7 +69,7 @@ export function useMembers(organizationId: string) {
     return () => {
       supabase.removeChannel(channel) // remove channel after component unmount
     }
-  }, [organizationId, queryClient, supabase]) //dependecny array
+  }, [organizationId, queryClient, supabase, user]) //dependecny array
 
   return query
 }

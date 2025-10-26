@@ -44,6 +44,26 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Check organization access for organization-specific routes
+  if (user && request.nextUrl.pathname.match(/^\/lab\/[a-f0-9-]{36}/)) {
+    const organizationId = request.nextUrl.pathname.split('/')[2]
+
+    // Check if user is a member of this organization
+    const { data: membership } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('user_id', user.id)
+      .single()
+
+    // If not a member, redirect to /lab
+    if (!membership) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/lab'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:

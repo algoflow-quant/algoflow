@@ -8,21 +8,34 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import MemberCard from './MemberCard'
+import InviteMemberDialog from './InviteMemberDialog'
+import MemberDetailsDialog from './MemberDetailsDialog'
 
 // Icon imports
 import { Search, UserPlus } from 'lucide-react'
 
 // Hook imports
 import { useMembers } from '../queries/useMembers'
-import { isUserOnline } from '../queries/useGlobalPresence'
+import { isUserOnline, usePresenceSubscription } from '../queries/useGlobalPresence'
+import { useCurrentUser } from '../queries/useCurrentUser'
+import type { OrganizationMember } from '../types'
 
 interface MembersManagerProps {
-  organizationId: string
+    organizationId: string
 }
 
 export default function MembersManager({ organizationId }: MembersManagerProps) {
     const { data: members, isLoading, error } = useMembers(organizationId)
+    const { user } = useCurrentUser()
     const [searchQuery, setSearchQuery] = useState('')
+    const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+    const [selectedMember, setSelectedMember] = useState<OrganizationMember | null>(null)
+
+    // Subscribe to presence changes to trigger re-renders
+    usePresenceSubscription()
+
+    // Get current user's role in this organization
+    const currentUserRole = members?.find(m => m.user_id === user?.id)?.role || 'member'
 
     // Filter members by search query
     const filteredMembers = members?.filter(member =>
@@ -45,10 +58,17 @@ export default function MembersManager({ organizationId }: MembersManagerProps) 
             className="mb-6 w-70 border-muted border-2 h-8"
             />
 
-            <Button variant='default' size='sm' className='cursor-pointer h-8'>
-            <UserPlus color='white' className='h-4 w-4'/>
-            Invite Member
-            </Button>
+            {(currentUserRole === 'owner' || currentUserRole === 'moderator') && (
+              <Button
+                variant='default'
+                size='sm'
+                className='cursor-pointer h-8'
+                onClick={() => setInviteDialogOpen(true)}
+              >
+                <UserPlus color='white' className='h-4 w-4'/>
+                Invite Member
+              </Button>
+            )}
         </div>
 
         {/* Loading state */}
@@ -104,10 +124,31 @@ export default function MembersManager({ organizationId }: MembersManagerProps) 
               <MemberCard
                 key={member.id}
                 member={member}
-                isOnline={isUserOnline(member.profiles.last_seen_at)}
+                isOnline={isUserOnline(member.user_id)}
+                onClick={() => setSelectedMember(member)}
               />
             ))}
           </div>
+        )}
+
+        {/* Invite Member Dialog */}
+        <InviteMemberDialog
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+          organizationId={organizationId}
+          userRole={currentUserRole}
+        />
+
+        {/* Member Details Dialog */}
+        {selectedMember && user && (
+          <MemberDetailsDialog
+            open={!!selectedMember}
+            onOpenChange={(open) => !open && setSelectedMember(null)}
+            member={selectedMember}
+            currentUserRole={currentUserRole}
+            currentUserId={user.id}
+            isOnline={isUserOnline(selectedMember.user_id)}
+          />
         )}
     </div>
   )

@@ -4,6 +4,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { ShineBorder } from '@/components/ui/shine-border'
 
 // Import types
 import type { OrganizationMember } from '../types'
@@ -12,9 +13,10 @@ import type { OrganizationMember } from '../types'
 interface MemberCardProps {
     member: OrganizationMember
     isOnline?: boolean
+    onClick?: () => void
 }
 
-export default function MemberCard({ member, isOnline = false }: MemberCardProps) {
+export default function MemberCard({ member, isOnline = false, onClick }: MemberCardProps) {
 
     // Get role badge styling
     const getRoleBadgeColor = (role: string) => {
@@ -25,8 +27,37 @@ export default function MemberCard({ member, isOnline = false }: MemberCardProps
             default: return 'bg-muted'
         }
     }
+    const getShineColor = (role: string) => {
+        switch (role) {
+            case 'owner': return '#ef4444' // red-500
+            case 'moderator': return '#3b82f6' // blue-500
+            default: return undefined
+        }
+    }
+
+    const getBorderStyle = (role: string) => {
+        switch (role) {
+            case 'owner': return { boxShadow: 'inset 0 0 0 2px rgba(239, 68, 68, 0.2)' }
+            case 'moderator': return { boxShadow: 'inset 0 0 0 2px rgba(59, 130, 246, 0.2)' }
+            default: return {}
+        }
+    }
+
+    const shineColor = getShineColor(member.role)
+
     return (
-        <Card className="p-4 flex-row items-center gap-4 hover:bg-muted/50 transition-colors rounded-sm">
+        <Card
+            className={`p-4 flex-row items-center gap-4 hover:bg-muted/50 transition-colors rounded-sm cursor-pointer relative overflow-hidden ${shineColor ? 'border-0' : ''}`}
+            onClick={onClick}
+            style={getBorderStyle(member.role)}
+        >
+            {shineColor && (
+                <ShineBorder
+                    shineColor={shineColor}
+                    borderWidth={2}
+                    duration={8}
+                />
+            )}
             {/* Avatar with online indicator */}
             <div className="relative">
                 <Avatar className="h-12 w-12">

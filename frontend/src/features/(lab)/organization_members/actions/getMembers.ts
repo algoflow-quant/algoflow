@@ -20,7 +20,7 @@ export async function getMembers(organizationId: string): Promise<OrganizationMe
     .select('*')
     .eq('organization_id', organizationId)
     .order('role', { ascending: true }) // owner first, then moderator, then member
-    .order('created_at', { ascending: true })
+    .order('joined_at', { ascending: true })
 
     if (error) {
         throw new Error(error.message)

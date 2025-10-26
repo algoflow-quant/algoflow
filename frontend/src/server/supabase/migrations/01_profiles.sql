@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT,
     avatar_url TEXT,
     bio TEXT,
-    role TEXT NOT NULL DEFAULT 'standard' CHECK (role IN ('standard', 'educator', 'admin', 'owner')),
+    role TEXT NOT NULL DEFAULT 'standard' CHECK (role IN ('standard', 'admin')),
     last_seen_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
@@ -39,7 +39,7 @@ CREATE POLICY "Users can update their own profile"
 CREATE POLICY "Admins can update any profile"
     ON public.profiles FOR UPDATE
     USING (
-        (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'owner')
+        (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
     )
     WITH CHECK (true);
 
