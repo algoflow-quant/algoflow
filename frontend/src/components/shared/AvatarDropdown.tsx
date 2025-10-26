@@ -36,7 +36,7 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-muted">
+      <DropdownMenuContent align="end" className="w-56 bg-card">
         <DropdownMenuLabel>
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{user.user_metadata?.full_name || 'User'}</p>
