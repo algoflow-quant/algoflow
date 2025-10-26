@@ -111,11 +111,13 @@ export function useGlobalPresence(userId: string | null) {
 
     // Cleanup
     return () => {
+      console.log('[Presence] Cleanup - removing user:', userId)
       clearInterval(lastSeenInterval)
 
       // Untrack and then unsubscribe
       if (presenceChannel) {
         presenceChannel.untrack().then(() => {
+          console.log('[Presence] Untracked successfully')
           presenceChannel.unsubscribe()
         })
       }
