@@ -3,6 +3,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useState } from 'react'
+import { useCurrentUser } from '@/features/(lab)/organization_members/queries/useCurrentUser'
+import { useGlobalPresence } from '@/features/(lab)/organization_members/queries/useGlobalPresence'
 
 // Query client factory
 export function makeQueryClient() {
@@ -43,6 +45,11 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
   // because React will throw away the client on the initial render if it
   // suspends and there is no boundary
   const [queryClient] = useState(() => getQueryClient())
+
+  const { user } = useCurrentUser()
+
+  // Track global presence for logged-in users across entire app
+  useGlobalPresence(user?.id ?? null)
 
   return (
     <QueryClientProvider client={queryClient}>

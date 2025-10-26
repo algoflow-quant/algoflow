@@ -26,10 +26,29 @@ CREATE POLICY "Users can create organizations"
     ON organizations FOR INSERT
     WITH CHECK (auth.uid() = owner_id);
 
--- Users can update their own organizations
+-- Users can update their own organizations (restricted fields)
 CREATE POLICY "Users can update their own organizations"
     ON organizations FOR UPDATE
-    USING (auth.uid() = owner_id);
+    USING (auth.uid() = owner_id)
+    WITH CHECK (
+        auth.uid() = owner_id AND
+        -- Prevent users from modifying protected fields
+        id = (SELECT id FROM organizations WHERE id = organizations.id) AND
+        owner_id = (SELECT owner_id FROM organizations WHERE id = organizations.id) AND
+        plan = (SELECT plan FROM organizations WHERE id = organizations.id) AND
+        type = (SELECT type FROM organizations WHERE id = organizations.id) AND
+        credits_limit = (SELECT credits_limit FROM organizations WHERE id = organizations.id) AND
+        credits_balance = (SELECT credits_balance FROM organizations WHERE id = organizations.id) AND
+        created_at = (SELECT created_at FROM organizations WHERE id = organizations.id)
+    );
+
+-- Admins can update any organization including protected fields
+CREATE POLICY "Admins can update any organization"
+    ON organizations FOR UPDATE
+    USING (
+        (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'owner')
+    )
+    WITH CHECK (true);
 
 -- Enable realtime for organizations table
 ALTER PUBLICATION supabase_realtime ADD TABLE organizations;

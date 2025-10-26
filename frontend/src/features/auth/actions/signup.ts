@@ -3,12 +3,17 @@
 // Supabase import
 import { createClient } from '@/server/supabase/server'
 
+// import arcjet
 import arcjet, { protectSignup } from "@arcjet/next"
+
+// import helpers
 import {
   extractSignupData,
   revalidateAndRedirect,
   handleAuthError,
 } from './helpers'
+
+// Next js imports
 import { headers } from "next/headers"
 
 const aj = arcjet({

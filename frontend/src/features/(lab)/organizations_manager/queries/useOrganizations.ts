@@ -1,8 +1,15 @@
 'use client'
 
+// Tanstack imports
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+
+// React imports
+import { useEffect, useMemo } from 'react'
+
+// server action imports
 import { getOrganizations } from '../actions/getOrganizations'
+
+// supabase imports
 import { createClient } from '@/server/supabase/client'
 
 
@@ -14,6 +21,9 @@ export function useOrganizations() {
     // Tanstack query client (runs in browser)
     const queryClient = useQueryClient()
 
+    // Supabase client (memoized to prevent recreating on every render)
+    const supabase = useMemo(() => createClient(), [])
+
     // Tanstack query handles loading state and caching
     const query = useQuery({
         queryKey: ['organizations'],
@@ -22,7 +32,6 @@ export function useOrganizations() {
 
     // Realtime subscription from supabase
     useEffect(() => {
-        const supabase = createClient() // 1. Create the client
         const channel = supabase
         .channel('organizations-changes') // Subscription name
         .on('postgres_changes', { // Listen for database changes
@@ -30,15 +39,15 @@ export function useOrganizations() {
             schema: 'public', // Public schema
             table: 'organizations' // Organizations table
         }, () => {
-            // 4. When ANY change happens, invalidate the React Query cache ** IMPORTANT
+            // When ANY change happens, invalidate the React Query cache ** IMPORTANT
             queryClient.invalidateQueries({ queryKey: ['organizations'] })
         })
-        .subscribe() // 5. Actually start listening
-        
+        .subscribe() // Actually start listening
+
         return () => {
         supabase.removeChannel(channel)
         }
-    }, [queryClient]) // Dependency array never changes really. Created and destroyed when component mounts and unmounts in the DOM
-    
+    }, [queryClient, supabase]) // Include supabase in dependencies
+
     return query
 }
