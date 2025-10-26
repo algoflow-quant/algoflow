@@ -6,6 +6,7 @@ import React, { useState } from 'react'
 // Shadcn Imports
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 // Icon imports
 import { Search, Plus } from 'lucide-react'
@@ -42,8 +43,33 @@ export default function OrganizationManager() {
         </div>
 
         {isLoading && (
-          <div className="flex justify-center items-center min-h-[400px]">
-            <LoadingAnimation size={64} color="#3b82f6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+            {[1, 2].map(i => (
+              <Card key={i} className="p-4 flex flex-col gap-3 rounded-sm bg-card h-42">
+                {/* Skeleton content */}
+                <div className="flex flex-row justify-between">
+                  <div className="h-4 bg-muted rounded w-3/4 relative overflow-hidden">
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                  </div>
+                  <div className="h-4 w-4 bg-muted rounded relative overflow-hidden">
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="h-5 bg-muted rounded w-16 relative overflow-hidden">
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                  </div>
+                  <div className="h-5 bg-muted rounded w-20 relative overflow-hidden">
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                  </div>
+                </div>
+
+                <div className="mt-auto ml-auto h-3 bg-muted rounded w-32 relative overflow-hidden">
+                  <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                </div>
+              </Card>
+            ))}
           </div>
         )}
 

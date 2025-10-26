@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/server/supabase/server'
 
 // Component imports
-import OrganizationManager from '@/features/(lab)/organizations/components/OrganizationManager'
+import OrganizationManager from '@/features/(lab)/organizations_manager/components/OrganizationManager'
 
 
 export default async function LabPage() {
