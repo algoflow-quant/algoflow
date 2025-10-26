@@ -5,6 +5,7 @@ import { createClient } from '@/server/supabase/server'
 
 // Component imports
 import AvatarDropdown from '@/components/shared/AvatarDropdown'
+import NotificationsDropdown from '@/components/shared/NotifcationsDropdown'
 import Logo from '@/components/shared/Logo'
 
 export default async function SpaHeader() {
@@ -24,7 +25,12 @@ export default async function SpaHeader() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          {user && <AvatarDropdown user={user} />}
+          {user && (
+            <>
+              <NotificationsDropdown userId={user.id} />
+              <AvatarDropdown user={user} />
+            </>
+          )}
         </div>
       </div>
     </header>

@@ -7,7 +7,6 @@ export interface OrganizationMember {
   role: 'owner' | 'moderator' | 'member'
   invited_by: string | null
   joined_at: string
-  created_at: string
   updated_at: string
   // Joined from profiles table
   profiles: {

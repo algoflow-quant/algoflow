@@ -16,11 +16,6 @@ CREATE TABLE organizations (
 -- RLS policies
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 
--- Users can read organizations they're members of (for now just owner, just created)
-CREATE POLICY "Users can read their organizations"
-    ON organizations FOR SELECT
-    USING (auth.uid() = owner_id);
-
 -- Users can create organizations
 CREATE POLICY "Users can create organizations"
     ON organizations FOR INSERT
@@ -46,9 +41,16 @@ CREATE POLICY "Users can update their own organizations"
 CREATE POLICY "Admins can update any organization"
     ON organizations FOR UPDATE
     USING (
-        (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'owner')
+        (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin')
     )
     WITH CHECK (true);
+
+-- Users can read organizations they own (member policy added in migration 03)
+CREATE POLICY "Users can read their organizations"
+    ON organizations FOR SELECT
+    USING (
+        owner_id = (SELECT id FROM profiles WHERE id = auth.uid())
+    );
 
 -- Enable realtime for organizations table
 ALTER PUBLICATION supabase_realtime ADD TABLE organizations;

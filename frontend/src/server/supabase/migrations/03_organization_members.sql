@@ -5,7 +5,6 @@ CREATE TABLE organization_members (
     role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'moderator', 'member')),
     invited_by UUID REFERENCES auth.users(id),
     joined_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT now() NOT NULL,
     UNIQUE(organization_id, user_id)
 );
@@ -40,6 +39,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Helper function to get user's role in org (bypasses RLS to avoid recursion)
+CREATE OR REPLACE FUNCTION public.get_user_org_role(org_id UUID, check_user_id UUID)
+RETURNS TEXT AS $$
+DECLARE
+    user_role TEXT;
+BEGIN
+    SELECT role INTO user_role
+    FROM organization_members
+    WHERE organization_id = org_id
+    AND user_id = check_user_id;
+
+    RETURN user_role;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Enable RLS
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization_member_history ENABLE ROW LEVEL SECURITY;
@@ -48,7 +62,7 @@ ALTER TABLE organization_member_history ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Members can view organization members"
     ON organization_members FOR SELECT
     USING (
-        public.is_organization_member(organization_id, auth.uid())
+        public.is_organization_member(organization_id, (SELECT id FROM profiles WHERE id = auth.uid()))
     );
 
 -- Members can view audit history of their org
@@ -58,7 +72,7 @@ CREATE POLICY "Members can view organization history"
         EXISTS (
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = organization_member_history.organization_id
-            AND om.user_id = auth.uid()
+            AND om.user_id = (SELECT id FROM profiles WHERE id = auth.uid())
         )
     );
 
@@ -66,12 +80,7 @@ CREATE POLICY "Members can view organization history"
 CREATE POLICY "Owners and moderators can add members"
     ON organization_members FOR INSERT
     WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM organization_members om
-            WHERE om.organization_id = organization_members.organization_id
-            AND om.user_id = auth.uid()
-            AND om.role IN ('owner', 'moderator')
-        )
+        public.get_user_org_role(organization_id, (SELECT id FROM profiles WHERE id = auth.uid())) IN ('owner', 'moderator')
         AND (
             -- Moderators can only add regular members
             role = 'member'
@@ -79,12 +88,7 @@ CREATE POLICY "Owners and moderators can add members"
             -- Owners can add moderators or members (not owners - use transfer for that)
             (
                 role IN ('moderator', 'member') AND
-                EXISTS (
-                    SELECT 1 FROM organization_members om
-                    WHERE om.organization_id = organization_members.organization_id
-                    AND om.user_id = auth.uid()
-                    AND om.role = 'owner'
-                )
+                public.get_user_org_role(organization_id, (SELECT id FROM profiles WHERE id = auth.uid())) = 'owner'
             )
         )
     );
@@ -93,17 +97,9 @@ CREATE POLICY "Owners and moderators can add members"
 CREATE POLICY "Owners can manage member roles"
     ON organization_members FOR UPDATE
     USING (
-        EXISTS (
-            SELECT 1 FROM organization_members om
-            WHERE om.organization_id = organization_members.organization_id
-            AND om.user_id = auth.uid()
-            AND om.role = 'owner'
-        )
+        public.get_user_org_role(organization_id, (SELECT id FROM profiles WHERE id = auth.uid())) = 'owner'
     )
     WITH CHECK (
-        organization_id = (SELECT organization_id FROM organization_members WHERE id = organization_members.id) AND
-        user_id = (SELECT user_id FROM organization_members WHERE id = organization_members.id) AND
-        created_at = (SELECT created_at FROM organization_members WHERE id = organization_members.id) AND
         -- Cannot create new owners through role change (use transfer ownership instead)
         role IN ('moderator', 'member')
     );
@@ -112,35 +108,16 @@ CREATE POLICY "Owners can manage member roles"
 CREATE POLICY "Owners and moderators can remove members"
     ON organization_members FOR DELETE
     USING (
-        EXISTS (
-            SELECT 1 FROM organization_members om
-            WHERE om.organization_id = organization_members.organization_id
-            AND om.user_id = auth.uid()
-            AND om.role IN ('owner', 'moderator')
-        )
-        AND user_id != auth.uid()  -- Cannot remove yourself
-        AND (
-            -- Moderators can only remove regular members
-            (SELECT role FROM organization_members WHERE id = organization_members.id) = 'member'
-            OR
-            -- Owners can remove moderators and members (but not other owners)
-            (
-                (SELECT role FROM organization_members WHERE id = organization_members.id) IN ('moderator', 'member') AND
-                EXISTS (
-                    SELECT 1 FROM organization_members om
-                    WHERE om.organization_id = organization_members.organization_id
-                    AND om.user_id = auth.uid()
-                    AND om.role = 'owner'
-                )
-            )
-        )
+        public.get_user_org_role(organization_id, (SELECT id FROM profiles WHERE id = auth.uid())) IN ('owner', 'moderator')
+        AND user_id != (SELECT id FROM profiles WHERE id = auth.uid())  -- Cannot remove yourself
+        AND role != 'owner'  -- Cannot remove owners
     );
 
 -- Members can leave the organization themselves (but owner cannot leave)
 CREATE POLICY "Members can leave organization"
     ON organization_members FOR DELETE
     USING (
-        auth.uid() = user_id AND
+        (SELECT id FROM profiles WHERE id = auth.uid()) = user_id AND
         role != 'owner'  -- Owners must transfer ownership before leaving
     );
 
@@ -155,9 +132,9 @@ BEGIN
             OLD.organization_id,
             OLD.user_id,
             OLD.role,
-            NULL,
+            OLD.role,  -- Keep the role they had when removed
             COALESCE(auth.uid(), OLD.user_id),
-            CASE 
+            CASE
                 WHEN auth.uid() = OLD.user_id THEN 'left'
                 ELSE 'removed'
             END
@@ -192,6 +169,20 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Auto-update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_member_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_member_timestamp
+    BEFORE UPDATE ON organization_members
+    FOR EACH ROW
+    EXECUTE FUNCTION update_member_updated_at();
 
 -- Trigger to log all member changes
 DROP TRIGGER IF EXISTS on_member_change ON organization_members;
@@ -263,13 +254,13 @@ BEGIN
 
     -- Demote current owner to moderator
     UPDATE organization_members
-    SET role = 'moderator', updated_at = now()
+    SET role = 'moderator'
     WHERE organization_id = p_organization_id
     AND user_id = v_current_owner_id;
 
     -- Promote new owner
     UPDATE organization_members
-    SET role = 'owner', updated_at = now()
+    SET role = 'owner'
     WHERE organization_id = p_organization_id
     AND user_id = p_new_owner_id;
 
@@ -292,6 +283,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Update organizations policy to allow members to view orgs they belong to
+DROP POLICY IF EXISTS "Users can read their organizations" ON organizations;
+CREATE POLICY "Users can read their organizations"
+    ON organizations FOR SELECT
+    USING (
+        owner_id = (SELECT id FROM profiles WHERE id = auth.uid())
+        OR EXISTS (
+            SELECT 1 FROM organization_members
+            WHERE organization_id = organizations.id
+            AND user_id = (SELECT id FROM profiles WHERE id = auth.uid())
+        )
+    );
+
 -- Enable realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE organization_members;
 ALTER PUBLICATION supabase_realtime ADD TABLE organization_member_history;
+
+-- Enable REPLICA IDENTITY FULL so DELETE events include the old row data
+ALTER TABLE organization_members REPLICA IDENTITY FULL;
+ALTER TABLE organization_member_history REPLICA IDENTITY FULL;

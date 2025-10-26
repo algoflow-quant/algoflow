@@ -21,18 +21,36 @@ export async function getOrganizations(): Promise<Organization[]> {
         throw new Error('Not authenticated')
     }
 
-    // 2. Query organizations for this user
+    // 2. Query organization_members to get all orgs user belongs to
+    const { data: memberData, error: memberError } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+
+    // 3. Handle errors
+    if (memberError) {
+        throw new Error(memberError.message)
+    }
+
+    // If user is not a member of any orgs, return empty array
+    if (!memberData || memberData.length === 0) {
+        return []
+    }
+
+    // 4. Get the organizations for those IDs
+    const orgIds = memberData.map(m => m.organization_id)
+
     const { data, error } = await supabase
         .from('organizations')
         .select('*')
-        .eq('owner_id', user.id)
+        .in('id', orgIds)
         .order('created_at', { ascending: false })
 
-    // 3. Handle errors
+    // 5. Handle errors
     if (error) {
         throw new Error(error.message)
     }
 
-    // 4. Return organizations array
+    // 6. Return organizations array
     return data || []
 }
