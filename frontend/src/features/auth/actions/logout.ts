@@ -1,7 +1,7 @@
 'use server'
 
 // Supabase import
-import { createClient } from '@/server/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 // Helpers
 import {

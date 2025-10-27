@@ -1,9 +1,22 @@
-import { SettingsDialog } from "@/components/settings-dialog"
+// Next js imports
+import { redirect } from 'next/navigation'
 
-export default function Page() {
+// Supabase imports
+import { createClient } from '@/lib/supabase/server'
+
+// Component imports
+import OrganizationManager from '@/features/organizations/manager/components/OrganizationManager'
+
+
+export default async function LabPage() {
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.getUser()
+
+  if (error || !data?.user) {
+    redirect('/login')
+  }
+
   return (
-    <div className="flex h-svh items-center justify-center">
-      <SettingsDialog />
-    </div>
+    <OrganizationManager/>
   )
 }
