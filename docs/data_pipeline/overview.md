@@ -53,13 +53,15 @@ graph TB
 !!! info "Architecture Components"
     Three main layers: DAGs orchestrate workflows, Pipeline scrapes/validates data, Client handles database operations
 
-The pipeline has three main components:
+The pipeline has five main components:
 
 | Component | Purpose | Key Features |
 |-----------|---------|--------------|
 | **DAGs** | Workflow orchestration | Airflow `.expand()` for parallelization, max 20 concurrent tasks |
-| **Pipeline** | Data scraping & validation | yfinance integration, Great Expectations checks |
 | **Client** | Database operations | Bulk inserts with `execute_values`, upsert patterns |
+| **Pipeline** | Data scraping orchestration | yfinance integration, coordinates tickers & validation |
+| **Tickers** | Ticker discovery & registration | Scrapes ticker lists from multiple sources |
+| **Validation** | Data quality assurance | 18 Great Expectations checks on OHLCV data |
 
 ## Key Features
 
