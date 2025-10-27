@@ -1,4 +1,5 @@
 import Header from "@/components/layout/public_header/Header"
+import Footer from "@/components/layout/footer"
 
 export default function MarketingLayout({
   children,
@@ -9,6 +10,7 @@ export default function MarketingLayout({
     <>
       <Header />
       <main className="pt-24">{children}</main>
+      <Footer />
     </>
   )
 }
