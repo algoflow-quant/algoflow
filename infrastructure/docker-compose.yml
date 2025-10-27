@@ -2,7 +2,7 @@
 # Runs all services for full-stack development
 
 include:
-  - docker-compose.data-pipeline.yml
+  # - docker-compose.data-pipeline.yml
   # - docker-compose.api.yml          # Uncomment when API is ready
   # - docker-compose.worker.yml       # Uncomment when worker is ready
   # - docker-compose.observability.yml # Uncomment if you want observability

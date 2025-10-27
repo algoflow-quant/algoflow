@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import QueryProvider from "../providers/react-query";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AlgoFlow - Quantitative Trading Platform",
-  description: "Cloud-based quantitative trading platform with managed backtesting and research environment",
+  title: "AlgoFlow - Quantitative Trading",
+  description: "Quantitative trading platform and IDE",
 };
 
 export default function RootLayout({
@@ -23,11 +24,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      > 
-        {children}
+      >
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );
