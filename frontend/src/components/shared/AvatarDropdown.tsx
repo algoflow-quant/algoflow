@@ -15,8 +15,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { User, Database, Command, LogOut } from "lucide-react"
 import { logout } from '@/features/auth'
-import { ThemeSelector } from '@/features/(marketing)/layout/header/ThemeSelector'
-import { UserSettingsDialog } from '@/features/(lab)/user_settings/components/UserSettingsDialog'
+import { ThemeSelector } from '@/components/layout/public_header/ThemeSelector'
+import { UserSettingsDialog } from '@/features/users/settings/components/UserSettingsDialog'
 
 interface AvatarDropdownProps {
   user: UserType
