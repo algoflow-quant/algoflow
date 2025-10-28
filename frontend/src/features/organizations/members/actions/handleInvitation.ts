@@ -1,9 +1,10 @@
 'use server'
 
-// import supabase server
-import { createClient } from '@/lib/supabase/server'
+// DAL imports - using repository pattern with ABAC authorization
+import { buildUserContext } from '@/lib/dal/context'
+import { InvitationRepository } from '@/lib/dal/repositories'
 
-// Arcjet import
+// Arcjet rate limiting and bot protection
 import { headers } from 'next/headers'
 import arcjet, { slidingWindow, detectBot } from '@arcjet/next'
 
@@ -16,8 +17,14 @@ const aj = arcjet({
   ]
 })
 
+/**
+ * Accept an organization invitation
+ * - ABAC verifies invitation is addressed to the current user
+ * - Creates organization_members record in transaction
+ * - Updates invitation status to 'accepted'
+ */
 export async function acceptInvitation(invitationId: string) {
-    // Arcjet protection
+    // Arcjet rate limiting protection
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
 
@@ -28,23 +35,25 @@ export async function acceptInvitation(invitationId: string) {
         throw new Error('Request blocked')
     }
 
-    const supabase = await createClient() // initialize supabase client
+    // Build user context for ABAC authorization
+    const userContext = await buildUserContext()
+    if (!userContext) throw new Error('Not authenticated')
 
-    // Call the SQL function to accept invitation
-    const { data, error } = await supabase.rpc('accept_invitation', {
-        invitation_id: invitationId
-    })
+    // Use InvitationRepository - ABAC verifies user can accept this invitation
+    // acceptInvitation() creates membership and updates status in a transaction
+    const invitationRepo = new InvitationRepository(userContext)
+    await invitationRepo.acceptInvitation(invitationId)
 
-    // throw error if supabase said so
-    if (error) {
-        throw new Error(error.message)
-    }
-
-    return { success: data }
+    return { success: true }
 }
 
+/**
+ * Decline an organization invitation
+ * - ABAC verifies invitation is addressed to the current user
+ * - Updates invitation status to 'declined'
+ */
 export async function declineInvitation(invitationId: string) {
-    // Arcjet protection
+    // Arcjet rate limiting protection
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
 
@@ -55,17 +64,13 @@ export async function declineInvitation(invitationId: string) {
         throw new Error('Request blocked')
     }
 
-    const supabase = await createClient() // initialize supabase client
+    // Build user context for ABAC authorization
+    const userContext = await buildUserContext()
+    if (!userContext) throw new Error('Not authenticated')
 
-    // Call the SQL function to decline invitation
-    const { data, error } = await supabase.rpc('decline_invitation', {
-        invitation_id: invitationId
-    })
+    // Use InvitationRepository - ABAC verifies user can decline this invitation
+    const invitationRepo = new InvitationRepository(userContext)
+    await invitationRepo.declineInvitation(invitationId)
 
-    // throw error if supabase said so
-    if (error) {
-        throw new Error(error.message)
-    }
-
-    return { success: data }
+    return { success: true }
 }

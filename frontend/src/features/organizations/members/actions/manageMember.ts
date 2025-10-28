@@ -1,6 +1,10 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+// DAL imports
+import { buildUserContextWithOrg } from '@/lib/dal/context'
+import { OrganizationMemberRepository } from '@/lib/dal/repositories'
+
+// Arcjet imports
 import { headers } from 'next/headers'
 import arcjet, { slidingWindow, detectBot } from '@arcjet/next'
 
@@ -9,12 +13,15 @@ const aj = arcjet({
     key: process.env.ARCJET_KEY!,
     rules: [
         detectBot({ mode: 'LIVE', allow: [] }),
-        slidingWindow({ mode: 'LIVE', interval: '1m', max: 20 }) // 20 member actions per minute
+        slidingWindow({ mode: 'LIVE', interval: '1m', max: 20 })
     ]
 })
 
+/**
+ * Remove member from organization - refactored to use DAL
+ */
 export async function removeMember(organizationId: string, userId: string) {
-    // Arcjet protection
+    // Arcjet rate limiting
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
 
@@ -25,62 +32,38 @@ export async function removeMember(organizationId: string, userId: string) {
         throw new Error('Request blocked')
     }
 
-    const supabase = await createClient()
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    // Build user context with organization membership
+    const userContext = await buildUserContextWithOrg(organizationId)
 
-    if (!currentUser) {
-        throw new Error('You must be logged in to remove members')
+    if (!userContext) {
+        throw new Error('Not authenticated')
     }
 
-    // Check current user's role
-    const { data: currentMember } = await supabase
-        .from('organization_members')
-        .select('role')
-        .eq('organization_id', organizationId)
-        .eq('user_id', currentUser.id)
-        .single()
+    // Use DAL to remove member (ABAC handles all permission checks)
+    const memberRepo = new OrganizationMemberRepository(userContext)
 
-    if (!currentMember || !['owner', 'moderator'].includes(currentMember.role)) {
-        throw new Error('You do not have permission to remove members')
-    }
-
-    // Check target member's role
-    const { data: targetMember } = await supabase
-        .from('organization_members')
-        .select('role')
-        .eq('organization_id', organizationId)
-        .eq('user_id', userId)
-        .single()
+    // Find member ID by organization and user
+    const members = await memberRepo.getOrganizationMembers(organizationId)
+    const targetMember = members.find(m => m.user_id === userId)
 
     if (!targetMember) {
         throw new Error('Member not found')
     }
 
-    // Can't remove owner
-    if (targetMember.role === 'owner') {
-        throw new Error('Cannot remove organization owner')
-    }
-
-    // Delete the member
-    const { error } = await supabase
-        .from('organization_members')
-        .delete()
-        .eq('organization_id', organizationId)
-        .eq('user_id', userId)
-
-    if (error) {
-        throw new Error(error.message)
-    }
+    await memberRepo.removeMember(targetMember.id)
 
     return { success: true }
 }
 
+/**
+ * Update member role - refactored to use DAL
+ */
 export async function updateMemberRole(
     organizationId: string,
     userId: string,
     newRole: 'moderator' | 'member'
 ) {
-    // Arcjet protection
+    // Arcjet rate limiting
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
 
@@ -91,51 +74,25 @@ export async function updateMemberRole(
         throw new Error('Request blocked')
     }
 
-    const supabase = await createClient()
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    // Build user context with organization membership
+    const userContext = await buildUserContextWithOrg(organizationId)
 
-    if (!currentUser) {
-        throw new Error('You must be logged in to update member roles')
+    if (!userContext) {
+        throw new Error('Not authenticated')
     }
 
-    // Check current user is owner
-    const { data: currentMember } = await supabase
-        .from('organization_members')
-        .select('role')
-        .eq('organization_id', organizationId)
-        .eq('user_id', currentUser.id)
-        .single()
+    // Use DAL to update member role (ABAC handles all permission checks)
+    const memberRepo = new OrganizationMemberRepository(userContext)
 
-    if (!currentMember || currentMember.role !== 'owner') {
-        throw new Error('Only organization owners can change member roles')
-    }
-
-    // Check target member exists and is not owner
-    const { data: targetMember } = await supabase
-        .from('organization_members')
-        .select('role')
-        .eq('organization_id', organizationId)
-        .eq('user_id', userId)
-        .single()
+    // Find member ID by organization and user
+    const members = await memberRepo.getOrganizationMembers(organizationId)
+    const targetMember = members.find(m => m.user_id === userId)
 
     if (!targetMember) {
         throw new Error('Member not found')
     }
 
-    if (targetMember.role === 'owner') {
-        throw new Error('Cannot change owner role')
-    }
-
-    // Update the role
-    const { error } = await supabase
-        .from('organization_members')
-        .update({ role: newRole })
-        .eq('organization_id', organizationId)
-        .eq('user_id', userId)
-
-    if (error) {
-        throw new Error(error.message)
-    }
+    await memberRepo.updateMemberRole(targetMember.id, newRole)
 
     return { success: true }
 }

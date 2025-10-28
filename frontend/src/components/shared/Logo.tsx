@@ -9,7 +9,10 @@ interface LogoProps {
 
 export default function Logo({ className, showText = true, href = '/' }: LogoProps) {
   return (
-    <Link href={href} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity -mt-0.5">
+    <Link
+      href={href}
+      className="flex items-center gap-2.5 hover:opacity-80 transition-opacity -mt-0.5"
+    >
       {/* 4-point star SVG */}
       <svg
         width="40"
@@ -27,7 +30,14 @@ export default function Logo({ className, showText = true, href = '/' }: LogoPro
 
         {/* Gradient definition */}
         <defs>
-          <linearGradient id="star-gradient" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+          <linearGradient
+            id="star-gradient"
+            x1="4"
+            y1="4"
+            x2="28"
+            y2="28"
+            gradientUnits="userSpaceOnUse"
+          >
             <stop stopColor="#3b82f6" />
             <stop offset="1" stopColor="#06b6d4" />
           </linearGradient>

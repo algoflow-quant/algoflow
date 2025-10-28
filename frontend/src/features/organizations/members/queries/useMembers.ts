@@ -9,8 +9,9 @@ import { useEffect, useMemo } from 'react'
 // supabase import
 import { createClient } from '@/lib/supabase/client'
 
-// Server action
+// Server actions
 import { getMembers } from '../actions/getMembers'
+import { checkMembership } from '../actions/checkMembership'
 
 // Current user
 import { useCurrentUser } from './useCurrentUser'
@@ -43,18 +44,20 @@ export function useMembers(organizationId: string) {
         async (payload) => {
           // Check if current user was deleted - need to verify by checking current membership
           if (payload.eventType === 'DELETE' && user) {
-            // Query to check if current user still exists in this organization
-            const { data: membership } = await supabase
-              .from('organization_members')
-              .select('id')
-              .eq('organization_id', organizationId)
-              .eq('user_id', user.id)
-              .maybeSingle()
+            // Use server action with DAL + ABAC to check membership (no direct database query)
+            try {
+              const isMember = await checkMembership(organizationId)
 
-            // If no membership found, user was removed - redirect
-            if (!membership) {
-              window.location.href = '/lab'
-              return // Don't invalidate queries since we're redirecting
+              // If not a member, user was removed - redirect to dashboard
+              if (!isMember) {
+                window.location.href = '/dashboard'
+                return // Don't invalidate queries since we're redirecting
+              }
+            } catch (error) {
+              // If error checking membership, assume removed and redirect
+              console.error('[useMembers] Failed to check membership:', error)
+              window.location.href = '/dashboard'
+              return
             }
           }
 

@@ -10,13 +10,13 @@ import type { OrganizationMember } from '../types'
 import { formatDistanceToNow } from 'date-fns'
 import { useQueryClient } from '@tanstack/react-query'
 import { removeMember, updateMemberRole } from '../actions/manageMember'
+import { useOrgRole } from '@/providers/RoleProvider'
+import { useCurrentUser } from '../queries/useCurrentUser'
 
 interface MemberDetailsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   member: OrganizationMember
-  currentUserRole: 'owner' | 'moderator' | 'member'
-  currentUserId: string
   isOnline: boolean
 }
 
@@ -24,22 +24,24 @@ export default function MemberDetailsDialog({
   open,
   onOpenChange,
   member,
-  currentUserRole,
-  currentUserId,
   isOnline,
 }: MemberDetailsDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const queryClient = useQueryClient()
 
+  // Get user role from context
+  const { isOwner, isModerator } = useOrgRole()
+  const { user } = useCurrentUser()
+
   // Determine if current user can manage this member
   const canRemove =
-    currentUserId !== member.user_id && // Can't remove yourself
+    user?.id !== member.user_id && // Can't remove yourself
     member.role !== 'owner' && // Can't remove owner
-    (currentUserRole === 'owner' || currentUserRole === 'moderator')
+    (isOwner || isModerator) // Owner or moderator can remove
 
   const canPromote =
-    currentUserId !== member.user_id && // Can't promote yourself
-    currentUserRole === 'owner' && // Only owners can promote
+    user?.id !== member.user_id && // Can't promote yourself
+    isOwner && // Only owners can promote
     member.role !== 'owner' // Can't promote an owner
 
   const handleRemove = async () => {

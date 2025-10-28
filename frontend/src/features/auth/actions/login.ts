@@ -52,6 +52,6 @@ export async function login(formData: FormData) {
     await handleAuthError(error)
   }
 
-  // Success - redirect to lab
-  await revalidateAndRedirect('/lab')
+  // Success - redirect to dashboard
+  await revalidateAndRedirect('/dashboard')
 }

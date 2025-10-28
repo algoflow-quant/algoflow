@@ -1,56 +1,25 @@
 "use server"
 
-// Types
-import type { Organization } from '../types'
+import { buildUserContext } from '@/lib/dal/context'
+import { OrganizationRepository } from '@/lib/dal/repositories/organization.repository'
 
-// Supabase
-import { createClient } from '@/lib/supabase/server'
-
-
-/*
- *  Get Organization server action. Runs initially to get a users organization on first load
+/**
+ * Get all organizations user is a member of (public data only)
+ * Uses DAL + ABAC for authorization
+ * Returns public organization data (no plan/credits - those are owner/admin only)
  */
-export async function getOrganizations(): Promise<Organization[]> {
+export async function getOrganizations() {
+    // Step 1: Build user context (includes auth check)
+    const userContext = await buildUserContext()
 
-    // Get supabase client and get user data
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    // 1. Check user exists
-    if (!user) {
+    if (!userContext) {
         throw new Error('Not authenticated')
     }
 
-    // 2. Query organization_members to get all orgs user belongs to
-    const { data: memberData, error: memberError } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
+    // Step 2: Use DAL to get organizations (public data only)
+    const orgRepo = new OrganizationRepository(userContext)
+    const organizations = await orgRepo.getUserOrganizations()
 
-    // 3. Handle errors
-    if (memberError) {
-        throw new Error(memberError.message)
-    }
-
-    // If user is not a member of any orgs, return empty array
-    if (!memberData || memberData.length === 0) {
-        return []
-    }
-
-    // 4. Get the organizations for those IDs
-    const orgIds = memberData.map(m => m.organization_id)
-
-    const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .in('id', orgIds)
-        .order('created_at', { ascending: false })
-
-    // 5. Handle errors
-    if (error) {
-        throw new Error(error.message)
-    }
-
-    // 6. Return organizations array
-    return data || []
+    // Step 3: Return public organization data
+    return organizations
 }

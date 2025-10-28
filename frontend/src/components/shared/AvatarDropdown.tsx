@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { User as UserType } from '@supabase/supabase-js'
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +11,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { User, Database, Command, LogOut } from "lucide-react"
+import { User, Database, Command, LogOut } from 'lucide-react'
 import { logout } from '@/features/auth'
 import { ThemeSelector } from '@/components/layout/public_header/ThemeSelector'
-import { UserSettingsDialog } from '@/features/users/settings/components/UserSettingsDialog'
+import { UserSettingsDialog } from '@/features/profiles/settings/components/UserSettingsDialog'
 
 interface AvatarDropdownProps {
   user: UserType
@@ -25,11 +25,14 @@ interface AvatarDropdownProps {
 export default function AvatarDropdown({ user }: AvatarDropdownProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const userInitials = user.user_metadata?.full_name
-    ?.split(' ')
-    .map((n: string) => n[0])
-    .join('')
-    .toUpperCase() || user.email?.[0].toUpperCase() || 'U'
+  const userInitials =
+    user.user_metadata?.full_name
+      ?.split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase() ||
+    user.email?.[0].toUpperCase() ||
+    'U'
 
   return (
     <>
@@ -38,7 +41,10 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 rounded-full p-0">
             <Avatar className="h-8.5 w-8.5">
-              <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || user.email} />
+              <AvatarImage
+                src={user.user_metadata?.avatar_url}
+                alt={user.user_metadata?.full_name || user.email}
+              />
               <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
             </Avatar>
           </Button>
@@ -46,7 +52,9 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
         <DropdownMenuContent align="end" className="w-56 bg-card">
           <DropdownMenuLabel>
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user.user_metadata?.full_name || 'User'}</p>
+              <p className="text-sm font-medium leading-none">
+                {user.user_metadata?.full_name || 'User'}
+              </p>
               <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
             </div>
           </DropdownMenuLabel>
@@ -56,7 +64,7 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
             Account Settings
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/lab" className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               All Organizations
             </Link>

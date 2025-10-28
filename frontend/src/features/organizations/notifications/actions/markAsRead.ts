@@ -1,9 +1,10 @@
 'use server'
 
-// supabase cleint
-import { createClient } from '@/lib/supabase/server'
+// DAL imports - using repository pattern with ABAC authorization
+import { buildUserContext } from '@/lib/dal/context'
+import { NotificationRepository } from '@/lib/dal/repositories'
 
-// Arcjet import
+// Arcjet rate limiting and bot protection
 import { headers } from 'next/headers'
 import arcjet, { slidingWindow, detectBot } from '@arcjet/next'
 
@@ -16,8 +17,12 @@ const aj = arcjet({
   ]
 })
 
+/**
+ * Mark a single notification as read
+ * ABAC ensures users can only mark their own notifications as read
+ */
 export async function markAsRead(notificationId: string) {
-    // Arcjet protection
+    // Arcjet rate limiting protection
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
 
@@ -28,25 +33,23 @@ export async function markAsRead(notificationId: string) {
         throw new Error('Request blocked')
     }
 
-    const supabase = await createClient() //initialize supabase client
+    // Build user context for ABAC authorization
+    const userContext = await buildUserContext()
+    if (!userContext) throw new Error('Not authenticated')
 
-    // mark notifcation ID read as true
-    const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId)
+    // Use NotificationRepository - ABAC verifies user owns this notification
+    const notificationRepo = new NotificationRepository(userContext)
+    await notificationRepo.markAsRead(notificationId)
 
-    // throw error if supabse did that
-    if (error) {
-        throw new Error(error.message)
-    }
-
-    // return true
     return { success: true }
 }
 
+/**
+ * Mark all user's notifications as read
+ * ABAC ensures users can only mark their own notifications
+ */
 export async function markAllAsRead(userId: string) {
-    // Arcjet protection
+    // Arcjet rate limiting protection
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
 
@@ -57,18 +60,13 @@ export async function markAllAsRead(userId: string) {
         throw new Error('Request blocked')
     }
 
-    const supabase = await createClient() // create supabase client
+    // Build user context for ABAC authorization
+    const userContext = await buildUserContext()
+    if (!userContext) throw new Error('Not authenticated')
 
-    const { error } = await supabase // mark user id notifcations all as read
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', userId)
-        .eq('read', false)
-
-    //throw error if supabase does
-    if (error) {
-        throw new Error(error.message)
-    }
+    // Use NotificationRepository - ABAC verifies user can only mark their own notifications
+    const notificationRepo = new NotificationRepository(userContext)
+    await notificationRepo.markAllAsRead()
 
     return { success: true }
 }
