@@ -1,3 +1,47 @@
+## v2.3.0 (2025-10-28)
+
+### Feat
+
+- added dal, abac, refactored loading animation, and ran prettier
+- added footer with mobile responsiveness
+- added member delete and settings
+- added member manager
+- added organization sidebar and updated header
+- added organization create feature
+- added bento grid with animations
+- made landing page & configured header
+- add jupyter:
+- add live coding experience
+- add live coding experience
+- add code color for light/dark and file tabs
+- add team invite feature
+- fixed ui and added notifcations
+- add team members crud
+- add team members crud
+- add notifcations with admin features
+- configured teams and projects
+- configured teams and projects
+- added shadcn dashboard and configured teams/projects
+- add glowing streak around login, register, and waitlsit cards
+- implemented login, register, waitlist, supabase, and auth for the lab route.
+- add supabase to infrastructure for frontend
+- add header to frontend, working navbar
+
+### Fix
+
+- added example env var
+- fixed supabase cli
+- fixed realtime issues
+- fixed bugs causing broken avatar url
+- resolve TypeScript errors and add read-only presence hook
+- fixed bugs causing realtime collab to not work
+- fixed spacing on navlink and auth
+- used chadcn for dropdown
+
+### Refactor
+
+- changed directory structure
+
 ## v2.2.0 (2025-10-08)
 
 ### Feat
