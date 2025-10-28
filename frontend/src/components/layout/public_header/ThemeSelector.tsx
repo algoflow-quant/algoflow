@@ -6,8 +6,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { useEffect, useState } from "react"
+} from '@/components/ui/select'
+import { useEffect, useState } from 'react'
 
 export function ThemeSelector() {
   const [theme, setTheme] = useState<string>('system')
@@ -36,9 +36,15 @@ export function ThemeSelector() {
         <SelectValue placeholder="Select theme" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="light" className="text-xs">Light</SelectItem>
-        <SelectItem value="dark" className="text-xs">Dark</SelectItem>
-        <SelectItem value="system" className="text-xs">System</SelectItem>
+        <SelectItem value="light" className="text-xs">
+          Light
+        </SelectItem>
+        <SelectItem value="dark" className="text-xs">
+          Dark
+        </SelectItem>
+        <SelectItem value="system" className="text-xs">
+          System
+        </SelectItem>
       </SelectContent>
     </Select>
   )

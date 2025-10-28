@@ -13,16 +13,16 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu"
-import { Separator } from "@/components/ui/separator"
-import { Button } from "@/components/ui/button"
+} from '@/components/ui/navigation-menu'
+import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
 
 // Custom components
 import {
   CustomNavbarDropdownButton,
   CustomNavbarDropdownButtonAlternative,
-  NavIcon
-} from './NavbarComponents';
+  NavIcon,
+} from './NavbarComponents'
 
 // Menu data configuration
 import {
@@ -31,15 +31,19 @@ import {
   featureSections,
   simpleLinks,
   type NavSection,
-  type NavMenuItem
-} from './navbarData';
+  type NavMenuItem,
+} from './navbarData'
 
 // Renders a single navigation menu item
 // Automatically handles icon sizing and wrapping
-function renderMenuItem(item: NavMenuItem, useAlternative: boolean = false, iconBgClassName?: string) {
+function renderMenuItem(
+  item: NavMenuItem,
+  useAlternative: boolean = false,
+  iconBgClassName?: string
+) {
   const ButtonComponent = useAlternative
     ? CustomNavbarDropdownButtonAlternative
-    : CustomNavbarDropdownButton;
+    : CustomNavbarDropdownButton
 
   return (
     <ButtonComponent
@@ -50,26 +54,22 @@ function renderMenuItem(item: NavMenuItem, useAlternative: boolean = false, icon
       description={item.description}
       iconBgClassName={iconBgClassName}
     />
-  );
+  )
 }
 
 // Renders a dropdown section with optional header and divider
 // Handles both Product and Features dropdown layouts
 function renderSection(section: NavSection, useAlternative: boolean = false) {
-  const { title, items, hasDivider, className } = section;
+  const { title, items, hasDivider, className } = section
 
   // Split items if divider is needed (last item separated)
-  const mainItems = hasDivider ? items.slice(0, -1) : items;
-  const lastItem = hasDivider ? items[items.length - 1] : null;
+  const mainItems = hasDivider ? items.slice(0, -1) : items
+  const lastItem = hasDivider ? items[items.length - 1] : null
 
   return (
     <div className={className} key={title || 'section'}>
       {/* Section header (optional) */}
-      {title && (
-        <p className="text-muted-foreground font-normal text-xs mb-1">
-          {title}
-        </p>
-      )}
+      {title && <p className="text-muted-foreground font-normal text-xs mb-1">{title}</p>}
 
       {/* Main items */}
       {mainItems.map(item => renderMenuItem(item, useAlternative))}
@@ -82,23 +82,21 @@ function renderSection(section: NavSection, useAlternative: boolean = false) {
         </>
       )}
     </div>
-  );
+  )
 }
 
 export default function Navbar() {
   return (
     <NavigationMenu>
       <NavigationMenuList className="flex gap-1">
-
         {/* Product Dropdown */}
         <NavigationMenuItem>
           <NavigationMenuTrigger>Product</NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="flex p-3 gap-4 w-[1000px]">
-
               {/* Product sections - data-driven */}
-              {productSections.map((section, index) =>
-                renderSection(section, index === 1) // Use alternative style for section 2
+              {productSections.map(
+                (section, index) => renderSection(section, index === 1) // Use alternative style for section 2
               )}
 
               {/* Product Showcase (Strategy Lab) */}
@@ -152,7 +150,10 @@ export default function Navbar() {
         {simpleLinks.map(link => (
           <NavigationMenuItem key={link.href}>
             <NavigationMenuLink asChild>
-              <Link href={link.href} className="font-normal text-muted-foreground hover:text-primary px-4 text-sm transition-colors">
+              <Link
+                href={link.href}
+                className="font-normal text-muted-foreground hover:text-primary px-4 text-sm transition-colors"
+              >
                 {link.label}
               </Link>
             </NavigationMenuLink>

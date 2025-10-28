@@ -46,6 +46,7 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
     setProcessingId(notificationId)
     try {
       await acceptInvitation(invitationId)
+      // Mark as read and delete the notification after accepting
       await handleMarkAsRead(notificationId)
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
       queryClient.invalidateQueries({ queryKey: ['organization-members'] })
@@ -61,7 +62,9 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
     setProcessingId(notificationId)
     try {
       await declineInvitation(invitationId)
+      // Mark as read and delete the notification after declining
       await handleMarkAsRead(notificationId)
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
     } catch (error) {
       console.error('Failed to decline invitation:', error)
     } finally {

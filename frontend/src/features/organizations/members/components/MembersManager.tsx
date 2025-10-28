@@ -18,6 +18,7 @@ import { Search, UserPlus } from 'lucide-react'
 import { useMembers } from '../queries/useMembers'
 import { isUserOnline, usePresenceSubscription } from '../queries/useGlobalPresence'
 import { useCurrentUser } from '../queries/useCurrentUser'
+import { useOrgRole } from '@/providers/RoleProvider'
 import type { OrganizationMember } from '../types'
 
 interface MembersManagerProps {
@@ -27,15 +28,13 @@ interface MembersManagerProps {
 export default function MembersManager({ organizationId }: MembersManagerProps) {
     const { data: members, isLoading, error } = useMembers(organizationId)
     const { user } = useCurrentUser()
+    const { isOwner, isModerator, organizationRole } = useOrgRole()
     const [searchQuery, setSearchQuery] = useState('')
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
     const [selectedMember, setSelectedMember] = useState<OrganizationMember | null>(null)
 
     // Subscribe to presence changes to trigger re-renders
     usePresenceSubscription()
-
-    // Get current user's role in this organization
-    const currentUserRole = members?.find(m => m.user_id === user?.id)?.role || 'member'
 
     // Filter members by search query
     const filteredMembers = members?.filter(member =>
@@ -58,7 +57,7 @@ export default function MembersManager({ organizationId }: MembersManagerProps) 
             className="mb-6 w-70 border-muted border-2 h-8"
             />
 
-            {(currentUserRole === 'owner' || currentUserRole === 'moderator') && (
+            {(isOwner || isModerator) && (
               <Button
                 variant='default'
                 size='sm'
@@ -136,17 +135,15 @@ export default function MembersManager({ organizationId }: MembersManagerProps) 
           open={inviteDialogOpen}
           onOpenChange={setInviteDialogOpen}
           organizationId={organizationId}
-          userRole={currentUserRole}
+          userRole={organizationRole || 'member'}
         />
 
         {/* Member Details Dialog */}
-        {selectedMember && user && (
+        {selectedMember && (
           <MemberDetailsDialog
             open={!!selectedMember}
             onOpenChange={(open) => !open && setSelectedMember(null)}
             member={selectedMember}
-            currentUserRole={currentUserRole}
-            currentUserId={user.id}
             isOnline={isUserOnline(selectedMember.user_id)}
           />
         )}

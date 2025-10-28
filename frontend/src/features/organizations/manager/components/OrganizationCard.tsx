@@ -7,16 +7,23 @@ import { useTransition } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import LoadingAnimation from '@/components/shared/LoadingAnimation'
-import type { Organization } from '../types'
 
 // Next imports
 import { useRouter } from 'next/navigation'
 
 // icon imports
-import { MdArrowForwardIos } from "react-icons/md";
+import { MdArrowForwardIos } from "react-icons/md"
 
+// Type: Organization with all fields from single table
 interface OrganizationCardProps {
-  organization: Organization
+  organization: {
+    id: string
+    name: string
+    type: string
+    plan: string
+    credits_balance: number
+    credits_limit: number
+  }
 }
 
 // Helper function to get badge variant based on plan

@@ -6,7 +6,11 @@ interface LoadingAnimationProps {
   color?: string
 }
 
-export default function LoadingAnimation({ size = 32, className, color = 'white' }: LoadingAnimationProps) {
+export default function LoadingAnimation({
+  size = 32,
+  className,
+  color = 'white',
+}: LoadingAnimationProps) {
   return (
     <svg
       width={size}

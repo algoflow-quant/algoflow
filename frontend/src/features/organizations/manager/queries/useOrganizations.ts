@@ -14,7 +14,8 @@ import { createClient } from '@/lib/supabase/client'
 
 
 /*
- *  Client side hook. called from client to subscribe to realtime organization updates
+ *  Client side hook. Called from client to subscribe to realtime organization updates
+ *  Only listens to changes for organizations the user is a member of
  */
 export function useOrganizations() {
 
@@ -30,24 +31,38 @@ export function useOrganizations() {
         queryFn: getOrganizations
     })
 
-    // Realtime subscription from supabase
+    // Realtime subscription - only listen to membership changes (filtered at DB level)
     useEffect(() => {
-        const channel = supabase
-        .channel('organizations-changes') // Subscription name
-        .on('postgres_changes', { // Listen for database changes
-            event: '*', // * mean list to ALL events
-            schema: 'public', // Public schema
-            table: 'organizations' // Organizations table
-        }, () => {
-            // When ANY change happens, invalidate the React Query cache ** IMPORTANT
-            queryClient.invalidateQueries({ queryKey: ['organizations'] })
-        })
-        .subscribe() // Actually start listening
-
-        return () => {
-        supabase.removeChannel(channel)
+        // Get current user ID for filtering
+        const getUserId = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            return user?.id
         }
-    }, [queryClient, supabase]) // Include supabase in dependencies
+
+        getUserId().then(userId => {
+            if (!userId) return
+
+            // Single subscription to organization_members table
+            // Filtered at database level for efficiency - only fires for this user
+            // Catches when user joins/leaves orgs, which triggers refetch
+            // Org detail changes (name, avatar) are picked up on next refetch
+            const channel = supabase
+                .channel('user-org-memberships')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'organization_members',
+                    filter: `user_id=eq.${userId}`
+                }, () => {
+                    queryClient.invalidateQueries({ queryKey: ['organizations'] })
+                })
+                .subscribe()
+
+            return () => {
+                supabase.removeChannel(channel)
+            }
+        })
+    }, [queryClient, supabase])
 
     return query
 }

@@ -1,15 +1,15 @@
-import { ComponentPropsWithoutRef, ReactNode } from "react"
-import { ArrowRightIcon } from "@radix-ui/react-icons"
-import Link from "next/link"
+import { ComponentPropsWithoutRef, ReactNode } from 'react'
+import { ArrowRightIcon } from '@radix-ui/react-icons'
+import Link from 'next/link'
 
-import { cn } from "@/lib/utils"
+import { cn } from '@/lib/utils'
 
-interface BentoGridProps extends ComponentPropsWithoutRef<"div"> {
+interface BentoGridProps extends ComponentPropsWithoutRef<'div'> {
   children: ReactNode
   className?: string
 }
 
-interface BentoCardProps extends ComponentPropsWithoutRef<"a"> {
+interface BentoCardProps extends ComponentPropsWithoutRef<'a'> {
   name: string
   className: string
   background: ReactNode
@@ -21,13 +21,7 @@ interface BentoCardProps extends ComponentPropsWithoutRef<"a"> {
 
 const BentoGrid = ({ children, className, ...props }: BentoGridProps) => {
   return (
-    <div
-      className={cn(
-        "grid w-full auto-rows-[28rem] grid-cols-3 gap-4",
-        className
-      )}
-      {...props}
-    >
+    <div className={cn('grid w-full auto-rows-[28rem] grid-cols-3 gap-4', className)} {...props}>
       {children}
     </div>
   )
@@ -47,11 +41,11 @@ const BentoCard = ({
     href={href}
     key={name}
     className={cn(
-      "group relative col-span-3 flex flex-col justify-between overflow-hidden rounded-xl cursor-pointer",
+      'group relative col-span-3 flex flex-col justify-between overflow-hidden rounded-xl cursor-pointer',
       // light styles
-      "bg-muted/50 border",
+      'bg-muted/50 border',
       // dark styles
-      "dark:bg-muted/30 transform-gpu dark:border",
+      'dark:bg-muted/30 transform-gpu dark:border',
       className
     )}
     {...props}
@@ -64,13 +58,15 @@ const BentoCard = ({
           <h3 className="text-lg font-semibold text-neutral-700 dark:text-neutral-300 transition-all duration-500 ease-in-out lg:group-hover:text-base">
             {name}
           </h3>
-          <p className="max-w-lg text-sm text-neutral-400 opacity-100 transition-all duration-500 ease-in-out lg:group-hover:opacity-0 lg:group-hover:translate-y-8">{description}</p>
+          <p className="max-w-lg text-sm text-neutral-400 opacity-100 transition-all duration-500 ease-in-out lg:group-hover:opacity-0 lg:group-hover:translate-y-8">
+            {description}
+          </p>
         </div>
       </div>
 
       <div
         className={cn(
-          "pointer-events-none flex w-full translate-y-0 transform-gpu flex-row items-center transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:hidden"
+          'pointer-events-none flex w-full translate-y-0 transform-gpu flex-row items-center transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 lg:hidden'
         )}
       >
         <span className="text-sm font-medium text-primary">
@@ -82,7 +78,7 @@ const BentoCard = ({
 
     <div
       className={cn(
-        "pointer-events-none absolute bottom-0 hidden w-full translate-y-10 transform-gpu flex-row items-center gap-3 p-4 opacity-0 transition-all duration-500 delay-200 ease-in-out group-hover:translate-y-0 group-hover:opacity-100 lg:flex"
+        'pointer-events-none absolute bottom-0 hidden w-full translate-y-10 transform-gpu flex-row items-center gap-3 p-4 opacity-0 transition-all duration-500 delay-200 ease-in-out group-hover:translate-y-0 group-hover:opacity-100 lg:flex'
       )}
     >
       <span className="text-sm font-medium text-primary">

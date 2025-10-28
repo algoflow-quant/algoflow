@@ -3,6 +3,9 @@
 // Supabase import
 import { createClient } from '@/lib/supabase/server'
 
+// Update last seen action
+import { updateLastSeen } from '@/features/profiles/settings/actions/updateLastSeen'
+
 // Helpers
 import {
   revalidateAndRedirect,
@@ -14,6 +17,13 @@ import {
 export async function logout() {
   // Get Supabase client
   const supabase = await createClient()
+
+  // Update last_seen_at before logout (using DAL + ABAC)
+  try {
+    await updateLastSeen()
+  } catch (error) {
+    console.error('[Logout] Failed to update last_seen_at:', error)
+  }
 
   // Sign out
   await supabase.auth.signOut()

@@ -1,15 +1,15 @@
 'use server'
 
-// Supabase client
-import { createClient } from '@/lib/supabase/server'
+// DAL imports - using repository pattern with ABAC authorization
+import { buildUserContextWithOrg, buildUserContext } from '@/lib/dal/context'
+import { InvitationRepository, NotificationRepository, OrganizationRepository } from '@/lib/dal/repositories'
+import { prisma } from '@/lib/dal/utils/prisma'
 
-// Next.js imports
+// Arcjet rate limiting and bot protection
 import { headers } from 'next/headers'
-
-// Arcjet imports
 import arcjet, { slidingWindow, detectBot } from '@arcjet/next'
 
-// Arcjet configuration
+// Arcjet configuration for invitation sending protection
 const aj = arcjet({
   key: process.env.ARCJET_KEY!,
   rules: [
@@ -17,7 +17,7 @@ const aj = arcjet({
     slidingWindow({
       mode: 'LIVE',
       interval: '1m',
-      max: 20 // Max 10 invitations per hour per user
+      max: 20 // Max 20 invitations per minute per user
     })
   ]
 })
@@ -28,8 +28,14 @@ interface SendInvitationParams {
     role: 'member' | 'moderator'
 }
 
+/**
+ * Send organization invitation server action
+ * - ABAC verifies user is owner/moderator of the organization
+ * - Creates invitation with expiration (7 days default)
+ * - Normalizes email (lowercase, trimmed)
+ */
 export async function sendInvitation({ organizationId, email, role }: SendInvitationParams) {
-    // Rate limiting with Arcjet
+    // Arcjet rate limiting protection
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
 
@@ -40,32 +46,50 @@ export async function sendInvitation({ organizationId, email, role }: SendInvita
         throw new Error('Request blocked')
     }
 
-    const supabase = await createClient() // create supabase client
+    // Build user context with organization membership for ABAC
+    const userContext = await buildUserContextWithOrg(organizationId)
+    if (!userContext) throw new Error('Not authenticated')
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    // throw error if not logged in
-    if (userError || !user) {
-        throw new Error('You must be logged in to send invitations')
-    }
-
-    // Create the invitation
-    const { data, error } = await supabase
-        .from('organization_invitations')
-        .insert({
-        organization_id: organizationId,
+    // Use InvitationRepository - ABAC verifies user is owner/moderator
+    const invitationRepo = new InvitationRepository(userContext)
+    const invitation = await invitationRepo.createInvitation({
+        organizationId,
         email: email.toLowerCase().trim(),
         role,
-        invited_by: user.id,
-        })
-        .select()
-        .single()
+    })
 
-    // throw error if caught from supabase
-    if (error) {
-        throw new Error(error.message)
+    // Check if invited email belongs to an existing user and create notification
+    const invitedProfile = await prisma.profiles.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        select: { id: true },
+    })
+
+    if (invitedProfile) {
+        // Build context for the invited user to create notification
+        const invitedUserContext = await buildUserContext()
+        if (invitedUserContext) {
+            // Get organization name for notification message
+            const orgRepo = new OrganizationRepository(userContext)
+            const org = await orgRepo.getOrganization(organizationId)
+
+            // Create notification for invited user
+            const notificationRepo = new NotificationRepository(invitedUserContext)
+            await notificationRepo.createNotification({
+                userId: invitedProfile.id,
+                type: 'invitation',
+                title: 'Organization Invitation',
+                message: `You've been invited to join ${org?.name || 'an organization'} as a ${role}`,
+                data: { invitation_id: invitation.id, organizationId },
+                actionUrl: `/invitations`,
+            })
+        }
     }
 
-    return data
+    // Convert Date objects to ISO strings for client compatibility
+    return {
+        ...invitation,
+        expires_at: invitation.expires_at.toISOString(),
+        created_at: invitation.created_at.toISOString(),
+        updated_at: invitation.updated_at.toISOString(),
+    }
 }

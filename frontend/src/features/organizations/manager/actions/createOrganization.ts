@@ -1,129 +1,83 @@
 "use server"
 
-// Import types
-import type { Organization } from '../types'
+// DAL imports
+import { buildUserContext } from '@/lib/dal/context'
+import { OrganizationRepository } from '@/lib/dal/repositories/organization.repository'
 
-// Supabase imports
-import { createClient } from '@/lib/supabase/server'
-
-// Next js imports
+// Next.js imports
 import { headers } from "next/headers"
 
-// Arcjet imports
+// Arcjet rate limiting imports
 import arcjet, { slidingWindow, detectBot } from "@arcjet/next"
 
-// Arcjet configuration
+// Arcjet configuration - prevent abuse
 const aj = arcjet({
   key: process.env.ARCJET_KEY!,
   rules: [
     detectBot({ mode: "LIVE", allow: [] }),
-    slidingWindow({ 
-      mode: "LIVE", 
-      interval: "1h", 
-      max: 100  // Max 5 organizations per hour
+    slidingWindow({
+      mode: "LIVE",
+      interval: "1h",
+      max: 10  // Max 10 organization creation attempts per hour
     }),
   ],
 })
 
-/*
- *  Create Organization server action, sends a reqeust to the server to create organization
+/**
+ * Create Organization server action
+ * Uses DAL + ABAC for authorization and data access
+ * ABAC automatically enforces free org limit (1 per user)
  */
-async function createOrganization(formData: FormData): Promise<Organization>  {
-    // Arcjet protection
+async function createOrganization(formData: FormData) {
+    // Step 1: Arcjet rate limiting protection
     const headersList = await headers()
     const decision = await aj.protect({ headers: headersList })
-    
+
     if (decision.isDenied()) {
         if (decision.reason.isRateLimit()) {
             throw new Error("Too many organization creation attempts. Please try again later.")
-        } else {
-            throw new Error("Request blocked. Please try again.")
         }
+        throw new Error("Request blocked. Please try again.")
     }
-    
-    // Get supabase client and get user data
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
 
-    // 1. Check user exists
-    if (!user) {
+    // Step 2: Build user context (includes auth check + role loading)
+    const userContext = await buildUserContext()
+    if (!userContext) {
         throw new Error('Not authenticated')
     }
 
-    // 2. Get user's role from profile
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-    const isAdminOrOwner = profile?.role === 'admin' || profile?.role === 'owner'
-
-    // Get selected plan from form
-    const selectedPlan = formData.get('plan') as string || 'free'
-
-    // 3. Check free organization limit (skip for admins/owners)
-    if (!isAdminOrOwner) {
-        // Only check limit if they're trying to create a FREE org
-        if (selectedPlan === 'free') {
-            const { count } = await supabase
-                .from('organizations')
-                .select('*', { count: 'exact', head: true })
-                .eq('owner_id', user.id)
-                .eq('plan', 'free')
-
-            if (count && count >= 1) {
-                throw new Error('You already have a free organization. Upgrade your plan or create a paid organization.')
-            }
-        }
-    }
-
-    // 4. Extract and validate form data
+    // Step 3: Extract and validate form data
     const name = formData.get('name') as string
     if (!name || name.trim().length === 0) {
         throw new Error('Organization name is required')
     }
 
-    // Extract type
+    const selectedPlan = formData.get('plan') as string || 'free'
     const selectedType = formData.get('type') as string || 'n/a'
 
-    // 5. Validate plan is allowed
-    const allowedPlans = ['free', 'standard', 'pro', 'team', 'enterprise', 'admin']
-    if (!allowedPlans.includes(selectedPlan)) {
-        throw new Error('Invalid plan selected')
-    }
+    // Note: Plan and type validation handled by database CHECK constraints
+    // Invalid values will throw Prisma error automatically
 
-    // 6. Validate type is allowed
-    const allowedTypes = ['personal', 'education', 'startup', 'fund', 'enterprise', 'research', 'n/a']
-    if (!allowedTypes.includes(selectedType)) {
-        throw new Error('Invalid type selected')
-    }
-
-    // 6. Handle payment if selection is not free (skip for admins/owners)
-    if (selectedPlan !== 'free' && !isAdminOrOwner) {
-        // Add checkout and other plans later
+    // Step 4: Handle payment for paid plans (admins bypass this)
+    if (selectedPlan !== 'free' && userContext.globalRole !== 'admin') {
+        // Redirect to checkout for paid plans
         throw new Error('redirect_to_checkout')
     }
 
-    // 7. Insert into database
-    const { data, error } = await supabase
-        .from('organizations')
-        .insert({
-            name: name.trim(),
-            owner_id: user.id,
-            plan: selectedPlan,
-            type: selectedType
-        })
-        .select()
-        .single()
+    // Step 5: Create organization using DAL
+    // ABAC automatically enforces:
+    // - Free org limit (1 per user)
+    // - Paid org limit (unlimited)
+    // - Admin bypass for all limits
+    const orgRepo = new OrganizationRepository(userContext)
+    const organization = await orgRepo.createOrganization({
+        name: name.trim(),
+        plan: selectedPlan,
+        type: selectedType,
+    })
 
-    // 8. Handle errors
-    if (error) {
-        throw new Error(error.message)
-    }
-
-    // 9. Return the new org
-    return data
+    // Step 6: Return created organization
+    return organization
 }
 
 export { createOrganization }
