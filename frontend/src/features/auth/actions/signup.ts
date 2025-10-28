@@ -84,6 +84,6 @@ export async function signup(formData: FormData) {
     await handleAuthError(error)
   }
 
-  // Success - redirect to home
-  await revalidateAndRedirect('/lab')
+  // Success - redirect to dashboard
+  await revalidateAndRedirect('/dashboard')
 }

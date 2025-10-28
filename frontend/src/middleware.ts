@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import arcjet, { detectBot, shield } from "@arcjet/next"
 import { type NextRequest, NextResponse } from 'next/server'
 
@@ -67,30 +68,42 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Step 3: Protect /lab routes - redirect to login if not authenticated
-  if (!user && request.nextUrl.pathname.startsWith('/lab')) {
+  // Step 3: Protect /dashboard routes - redirect to login if not authenticated
+  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   // Step 4: Check organization access for organization-specific routes
-  // TODO: Remove this when ABAC is implemented (will handle in application layer)
-  if (user && request.nextUrl.pathname.match(/^\/lab\/[a-f0-9-]{36}/)) {
+  // Uses service role to bypass RLS - middleware runs before application layer ABAC
+  if (user && request.nextUrl.pathname.match(/^\/dashboard\/[a-f0-9-]{36}/)) {
     const organizationId = request.nextUrl.pathname.split('/')[2]
 
+    // Create service role client to bypass RLS
+    const serviceRoleClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    )
+
     // Check if user is a member of this organization
-    const { data: membership } = await supabase
+    const { data: membership } = await serviceRoleClient
       .from('organization_members')
       .select('id')
       .eq('organization_id', organizationId)
       .eq('user_id', user.id)
       .single()
 
-    // If not a member, redirect to /lab
+    // If not a member, redirect to /dashboard
     if (!membership) {
       const url = request.nextUrl.clone()
-      url.pathname = '/lab'
+      url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
   }
@@ -118,9 +131,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - /lab routes are protected (requires authentication)
+     * - /dashboard routes are protected (requires authentication)
      */
-    '/lab/:path*',  // Protect all lab routes
+    '/dashboard/:path*',  // Protect all dashboard routes
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

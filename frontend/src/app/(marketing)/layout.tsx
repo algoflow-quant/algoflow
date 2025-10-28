@@ -1,11 +1,7 @@
-import Header from "@/components/layout/public_header/Header"
-import Footer from "@/components/layout/footer"
+import Header from '@/components/layout/public_header/Header'
+import Footer from '@/components/layout/footer'
 
-export default function MarketingLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Header />

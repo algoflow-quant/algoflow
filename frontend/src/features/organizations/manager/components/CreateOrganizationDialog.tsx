@@ -1,7 +1,7 @@
 'use client'
 
 // React imports
-import React, {useState, useEffect} from 'react'
+import React, { useState } from 'react'
 
 // Components imports
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -18,8 +18,8 @@ import { createOrganization } from '../actions/createOrganization'
 // Tanstack query client
 import { useQueryClient } from '@tanstack/react-query'
 
-// Supabase
-import { createClient } from '@/lib/supabase/client'
+// Hooks
+import { useCurrentUser } from '@/features/organizations/members/queries/useCurrentUser'
 
 interface CreateOrganizationDialogProps {
   open: boolean
@@ -30,32 +30,15 @@ export default function CreateOrganizationDialog({ open, onOpenChange }: CreateO
     // loading and error states
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [isAdmin, setIsAdmin] = useState(false)
 
     // Initailzie a query client
     const queryClient = useQueryClient()
 
-    // Check if user is admin
-    useEffect(() => {
-        async function checkAdminStatus() {
-            const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
+    // Get current user to check if admin
+    const { user } = useCurrentUser()
 
-            if (user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', user.id)
-                    .single()
-
-                setIsAdmin(profile?.role === 'admin' || profile?.role === 'owner')
-            }
-        }
-
-        if (open) {
-            checkAdminStatus()
-        }
-    }, [open])
+    // Check if user is admin from Supabase user metadata
+    const isAdmin = user?.user_metadata?.role === 'admin'
 
     // Form submission handler
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -73,13 +56,13 @@ export default function CreateOrganizationDialog({ open, onOpenChange }: CreateO
             } catch (err) { // catch error and un finished checkout error from aciton
             if (err instanceof Error) {
                 if (err.message === 'redirect_to_checkout') {
-                setError('Paid plans coming soon! Please select the free plan.')
+                    setError('Paid plans coming soon! Please select the free plan.')
                 } else {
-                setError(err.message)
+                    setError(err.message)
                 }
             }
             } finally {
-            setIsLoading(false) // set loading state to false
+                setIsLoading(false) // set loading state to false
             }
         }
   return (
@@ -160,6 +143,7 @@ export default function CreateOrganizationDialog({ open, onOpenChange }: CreateO
                             <SelectItem value="pro">Pro - $99/mo</SelectItem>
                             <SelectItem value="team">Team - $699/mo</SelectItem>
                             <SelectItem value="enterprise">Enterprise - Custom</SelectItem>
+                            {/* Only show admin plan to admin users */}
                             {isAdmin && <SelectItem value="admin">Admin</SelectItem>}
                         </SelectContent>
                     </Select>

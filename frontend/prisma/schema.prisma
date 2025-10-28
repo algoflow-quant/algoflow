@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public"]
+}
+
+// Single profiles table - ABAC controls field access
+// Public fields: username, full_name, avatar_url, bio
+// Private fields: email, role, last_seen_at
+model profiles {
+  id           String    @id @db.Uuid
+  username     String    @unique
+  full_name    String?
+  avatar_url   String?
+  bio          String?
+  email        String    @unique
+  role         String    @default("standard")
+  last_seen_at DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  organization_members     organization_members[]
+  invitations_sent         organization_invitations[] @relation("invitation_inviter")
+  notifications            notifications[]            @relation("user_notifications")
+
+  @@index([role], map: "idx_profiles_role")
+  @@index([last_seen_at], map: "idx_profiles_last_seen")
+  @@schema("public")
+}
+
+// Public organization data - members can read
+// Single organizations table - ABAC controls field access
+// Members can read: name, avatar_url, description, type
+// Owner can update: name, avatar_url, description, type
+// Owner/Admin can read: plan, credits_limit, credits_balance, settings
+// Admin can update: plan, credits_limit, credits_balance
+// Owner can delete organization
+model organizations {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  owner_id        String   @db.Uuid
+  avatar_url      String?
+  description     String?
+  type            String   @default("N/A")
+  plan            String   @default("free")
+  credits_limit   Int      @default(1000)
+  credits_balance Int      @default(1000)
+  settings        Json     @default("{}")
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  members     organization_members[]
+  invitations organization_invitations[]
+
+  @@index([owner_id], map: "idx_org_owner")
+  @@index([plan], map: "idx_org_plan")
+  @@schema("public")
+}
+
+// Organization membership - who belongs to which org
+model organization_members {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  user_id         String   @db.Uuid
+  role            String   @default("member")
+  invited_by      String?  @db.Uuid
+  joined_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  organization organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user         profiles      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([organization_id, user_id])
+  @@index([organization_id], map: "idx_org_members_org_id")
+  @@index([user_id], map: "idx_org_members_user_id")
+  @@schema("public")
+}
+
+// Organization invitations
+model organization_invitations {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  email           String
+  role            String
+  invited_by      String?  @db.Uuid
+  status          String   @default("pending")
+  expires_at      DateTime @db.Timestamptz(6)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  organization organizations @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  inviter      profiles?     @relation("invitation_inviter", fields: [invited_by], references: [id], onDelete: SetNull)
+
+  @@index([organization_id], map: "idx_invitations_org_id")
+  @@index([email], map: "idx_invitations_email")
+  @@index([status], map: "idx_invitations_status")
+  @@schema("public")
+}
+
+// User notifications
+model notifications {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  type       String
+  title      String
+  message    String
+  data       Json     @default("{}")
+  read       Boolean  @default(false)
+  action_url String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  user profiles @relation("user_notifications", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id], map: "idx_notifications_user_id")
+  @@index([read], map: "idx_notifications_read")
+  @@schema("public")
+}

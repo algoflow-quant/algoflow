@@ -13,7 +13,6 @@ import { Search, Plus } from 'lucide-react'
 
 // Component imports
 import OrganizationCard from './OrganizationCard'
-import LoadingAnimation from '@/components/shared/LoadingAnimation'
 import CreateOrganizationDialog from './CreateOrganizationDialog'
 
 // Hook imports
@@ -49,24 +48,24 @@ export default function OrganizationManager() {
                 {/* Skeleton content */}
                 <div className="flex flex-row justify-between">
                   <div className="h-4 bg-muted rounded w-3/4 relative overflow-hidden">
-                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                   </div>
                   <div className="h-4 w-4 bg-muted rounded relative overflow-hidden">
-                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                   </div>
                 </div>
 
                 <div className="flex gap-2">
                   <div className="h-5 bg-muted rounded w-16 relative overflow-hidden">
-                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                   </div>
                   <div className="h-5 bg-muted rounded w-20 relative overflow-hidden">
-                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                    <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                   </div>
                 </div>
 
                 <div className="mt-auto ml-auto h-3 bg-muted rounded w-32 relative overflow-hidden">
-                  <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 via-white/50 to-transparent" />
+                  <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                 </div>
               </Card>
             ))}

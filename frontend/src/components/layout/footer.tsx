@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import React from 'react'
 import Link from 'next/link'
@@ -16,58 +16,54 @@ const Footer = () => {
         </div>
 
         <div className="flex flex-row max-w-3xl ml-auto">
+          {/* Footer Product Col */}
+          <div className="flex-1 flex flex-col gap-3 md:pl-15 py-15 items-center md:items-end">
+            <p className="font-bold text-foreground">Product</p>
+            <Link href="/about#faq" className="text-sm text-muted-foreground hover:text-foreground">
+              FAQ
+            </Link>
 
-        {/* Footer Product Col */}
-        <div className="flex-1 flex flex-col gap-3 md:pl-15 py-15 items-center md:items-end">
-         <p className="font-bold text-foreground">Product</p>
-        <Link href="/about#faq" className="text-sm text-muted-foreground hover:text-foreground">
-         FAQ
-         </Link>
+            <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground">
+              About
+            </Link>
 
-         <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground">
-         About
-         </Link>
+            <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
+              Pricing
+            </Link>
+          </div>
 
-          <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
-         Pricing
-         </Link>
-        </div>
+          {/* Footer Contact Col */}
+          <div className="flex-1 flex flex-col gap-3 md:pl-15 py-15 items-center md:items-end">
+            <p className="font-bold text-foreground">Contact</p>
+            <Link href="/email" className="text-sm text-muted-foreground hover:text-foreground">
+              Email
+            </Link>
 
-        {/* Footer Contact Col */}
-        <div className="flex-1 flex flex-col gap-3 md:pl-15 py-15 items-center md:items-end">
-         <p className="font-bold text-foreground">Contact</p>
-        <Link href="/email" className="text-sm text-muted-foreground hover:text-foreground"> 
-         Email
-         </Link> 
+            <Link href="/social" className="text-sm text-muted-foreground hover:text-foreground">
+              Social
+            </Link>
 
-        <Link href="/social" className="text-sm text-muted-foreground hover:text-foreground">
-         Social
-        </Link> 
+            <Link href="/support" className="text-sm text-muted-foreground hover:text-foreground">
+              Support
+            </Link>
+          </div>
 
-         <Link href="/support" className="text-sm text-muted-foreground hover:text-foreground">
-         Support
-        </Link> 
-        </div>
-        
+          {/* Footer Legal Col*/}
+          <div className="flex-1 flex flex-col gap-3 md:pl-15 py-15 items-center md:items-end">
+            <p className="font-bold text-foreground">Legal</p>
 
-         {/* Footer Legal Col*/}
-        <div className="flex-1 flex flex-col gap-3 md:pl-15 py-15 items-center md:items-end">
-         <p className="font-bold text-foreground">Legal</p>
+            <Link href="/tos" className="text-sm text-muted-foreground hover:text-foreground">
+              TOS
+            </Link>
 
-          <Link href="/tos" className="text-sm text-muted-foreground hover:text-foreground">
-         TOS
-         </Link>
-      
-         <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
-         Privacy
-         </Link>
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
+              Privacy
+            </Link>
 
-         <Link href="/copyright" className="text-sm text-muted-foreground hover:text-foreground">
-         Copyright
-         </Link>
-
-        </div>
-
+            <Link href="/copyright" className="text-sm text-muted-foreground hover:text-foreground">
+              Copyright
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

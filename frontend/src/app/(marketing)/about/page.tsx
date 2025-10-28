@@ -4,5 +4,5 @@ export default function AboutPage() {
       <h1 className="text-4xl font-bold mb-4">About AlgoFlow</h1>
       <p className="text-muted-foreground">Coming soon...</p>
     </div>
-  );
+  )
 }
