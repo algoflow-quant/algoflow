@@ -8,7 +8,7 @@ import { AuroraText } from '@/components/ui/aurora-text'
 export default function ContentSection() {
     return (
         <section className="py-16 md:py-20">
-            <div className="mx-auto max-w-5xl px-4 lg:px-0">
+            <div className="mx-auto max-w-5xl px-4 [@media(min-width:1054px)]:px-0">
                 <div className="grid gap-6 md:grid-cols-2 md:gap-12 text-center md:text-left">
                     <h2 className="text-4xl font-bold">
                         Institutional-Grade Quantitative Trading, <AuroraText>Democratized.</AuroraText>
@@ -39,35 +39,36 @@ export default function ContentSection() {
                         className="w-full h-auto max-h-[400px] object-cover object-top rounded-lg grayscale"
                     />
                 </div>
-                <div className="relative mx-auto grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-8 lg:grid-cols-4 mt-10">
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Zap className="size-4" />
-                            <h3 className="text-sm font-medium">Faaast</h3>
+                <div className="relative mx-auto max-w-5xl px-4 lg:px-0 mt-16">
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-8 lg:grid-cols-4">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Zap className="size-4" />
+                                <h3 className="text-sm font-medium">Innovation</h3>
+                            </div>
+                            <p className="text-muted-foreground text-sm">Constantly pushing boundaries to bring cutting-edge solutions to quantitative trading.</p>
                         </div>
-                        <p className="text-muted-foreground text-sm">It supports an entire helping developers and innovate.</p>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <Cpu className="size-4" />
-                            <h3 className="text-sm font-medium">Powerful</h3>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Cpu className="size-4" />
+                                <h3 className="text-sm font-medium">Accessibility</h3>
+                            </div>
+                            <p className="text-muted-foreground text-sm">Making professional-grade tools available to traders at every level.</p>
                         </div>
-                        <p className="text-muted-foreground text-sm">It supports an entire helping developers and businesses.</p>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <Lock className="size-4" />
-                            <h3 className="text-sm font-medium">Security</h3>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Lock className="size-4" />
+                                <h3 className="text-sm font-medium">Security</h3>
+                            </div>
+                            <p className="text-muted-foreground text-sm">Protecting your data and strategies with institutional-grade security measures.</p>
                         </div>
-                        <p className="text-muted-foreground text-sm">It supports an helping developers businesses innovate.</p>
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className="size-4" />
-
-                            <h3 className="text-sm font-medium">AI Powered</h3>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Sparkles className="size-4" />
+                                <h3 className="text-sm font-medium">Transparency</h3>
+                            </div>
+                            <p className="text-muted-foreground text-sm">Building trust through clear communication and honest practices.</p>
                         </div>
-                        <p className="text-muted-foreground text-sm">It supports an helping developers businesses innovate.</p>
                     </div>
                 </div>
             </div>
