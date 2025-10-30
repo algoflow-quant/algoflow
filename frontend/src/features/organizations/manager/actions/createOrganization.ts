@@ -3,25 +3,7 @@
 // DAL imports
 import { buildUserContext } from '@/lib/dal/context'
 import { OrganizationRepository } from '@/lib/dal/repositories/organization.repository'
-
-// Next.js imports
-import { headers } from "next/headers"
-
-// Arcjet rate limiting imports
-import arcjet, { slidingWindow, detectBot } from "@arcjet/next"
-
-// Arcjet configuration - prevent abuse
-const aj = arcjet({
-  key: process.env.ARCJET_KEY!,
-  rules: [
-    detectBot({ mode: "LIVE", allow: [] }),
-    slidingWindow({
-      mode: "LIVE",
-      interval: "1h",
-      max: 10  // Max 10 organization creation attempts per hour
-    }),
-  ],
-})
+import { protectAction } from '@/lib/arcjet'
 
 /**
  * Create Organization server action
@@ -30,15 +12,7 @@ const aj = arcjet({
  */
 async function createOrganization(formData: FormData) {
     // Step 1: Arcjet rate limiting protection
-    const headersList = await headers()
-    const decision = await aj.protect({ headers: headersList })
-
-    if (decision.isDenied()) {
-        if (decision.reason.isRateLimit()) {
-            throw new Error("Too many organization creation attempts. Please try again later.")
-        }
-        throw new Error("Request blocked. Please try again.")
-    }
+    await protectAction('createOrganization')
 
     // Step 2: Build user context (includes auth check + role loading)
     const userContext = await buildUserContext()

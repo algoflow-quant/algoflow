@@ -218,7 +218,7 @@ export class InvitationRepository extends Repository {
             return
         }
 
-        // Create membership and update invitation status in transaction
+        // Create membership and delete invitation in transaction
         await this.prisma.$transaction([
             // Add user to organization
             this.prisma.organization_members.create({
@@ -229,10 +229,9 @@ export class InvitationRepository extends Repository {
                     invited_by: invitation.invited_by,
                 },
             }),
-            // Update invitation status
-            this.prisma.organization_invitations.update({
+            // Delete invitation (no need to keep it)
+            this.prisma.organization_invitations.delete({
                 where: { id: invitationId },
-                data: { status: 'accepted' },
             }),
         ])
     }
@@ -270,10 +269,9 @@ export class InvitationRepository extends Repository {
             },
         })
 
-        // Update status to declined
-        await this.prisma.organization_invitations.update({
+        // Delete invitation (no need to keep it)
+        await this.prisma.organization_invitations.delete({
             where: { id: invitationId },
-            data: { status: 'declined' },
         })
     }
 

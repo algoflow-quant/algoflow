@@ -1,4 +1,5 @@
 -- Organization members table for ABAC (no RLS, no audit history)
+-- Hard deletes - removed members are truly deleted (no soft delete status)
 CREATE TABLE IF NOT EXISTS organization_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NOT NULL,
@@ -14,37 +15,14 @@ CREATE TABLE IF NOT EXISTS organization_members (
 CREATE INDEX idx_org_members_org_id ON organization_members(organization_id);
 CREATE INDEX idx_org_members_user_id ON organization_members(user_id);
 
--- RLS for Realtime subscriptions only
--- Application uses ABAC (service role bypasses RLS)
-ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
+-- No RLS needed - all queries use service role which bypasses RLS
+-- Authorization handled by ABAC in application layer
 
-CREATE POLICY "organization_members_realtime_select"
-  ON organization_members FOR SELECT
-  USING (
-    -- Can see own membership
-    auth.uid() = user_id
-    OR
-    -- Can see other members if you're in the same org
-    EXISTS (
-      SELECT 1 FROM organization_members om
-      WHERE om.organization_id = organization_members.organization_id
-      AND om.user_id = auth.uid()
-    )
-  );
-
--- Auto-update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_member_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_update_member_timestamp
+-- Auto-update updated_at timestamp (uses universal function from 07)
+CREATE TRIGGER trigger_update_organization_members_timestamp
     BEFORE UPDATE ON organization_members
     FOR EACH ROW
-    EXECUTE FUNCTION update_member_updated_at();
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Auto-add owner as member when org is created
 CREATE OR REPLACE FUNCTION public.handle_new_organization()
@@ -62,19 +40,42 @@ CREATE TRIGGER on_organization_created
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_organization();
 
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE organization_members;
+-- Broadcast changes via realtime.send() (uses universal function from 00)
+CREATE TRIGGER trigger_broadcast_organization_members_change
+    AFTER INSERT OR UPDATE OR DELETE ON organization_members
+    FOR EACH ROW
+    EXECUTE FUNCTION broadcast_change();
 
--- Enable REPLICA IDENTITY FULL so DELETE events include the old row data
-ALTER TABLE organization_members REPLICA IDENTITY FULL;
+-- Auto-create notification when member is removed from organization
+CREATE OR REPLACE FUNCTION public.handle_member_removed()
+RETURNS TRIGGER AS $$
+DECLARE
+    org_name TEXT;
+BEGIN
+    -- Get organization name for the notification message
+    SELECT name INTO org_name FROM public.organizations WHERE id = OLD.organization_id;
 
--- Add RLS policy for organizations table (now that members table exists)
-CREATE POLICY "organizations_realtime_select"
-  ON organizations FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM organization_members om
-      WHERE om.organization_id = organizations.id
-      AND om.user_id = auth.uid()
-    )
-  );
+    -- Create notification for the removed user
+    INSERT INTO public.notifications (user_id, type, title, message, data, action_url)
+    VALUES (
+        OLD.user_id,
+        'removed_from_org',
+        'Removed from Organization',
+        'You have been removed from ' || COALESCE(org_name, 'an organization'),
+        jsonb_build_object(
+            'organization_id', OLD.organization_id,
+            'organization_name', org_name,
+            'previous_role', OLD.role
+        ),
+        '/dashboard'
+    );
+
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_member_removed ON organization_members;
+CREATE TRIGGER on_member_removed
+    AFTER DELETE ON organization_members
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_member_removed();

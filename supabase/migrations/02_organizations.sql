@@ -24,8 +24,11 @@ CREATE TABLE IF NOT EXISTS organizations (
 CREATE INDEX idx_org_owner ON organizations(owner_id);
 CREATE INDEX idx_org_plan ON organizations(plan);
 
--- RLS enabled here, policy added in 03_organization_members.sql after members table exists
-ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+-- No RLS needed - all queries use service role which bypasses RLS
+-- Authorization handled by ABAC in application layer
 
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE organizations;
+-- Auto-update updated_at timestamp (uses universal function from 07)
+CREATE TRIGGER trigger_update_organizations_timestamp
+    BEFORE UPDATE ON organizations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();

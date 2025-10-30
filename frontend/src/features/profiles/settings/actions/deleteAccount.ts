@@ -2,27 +2,10 @@
 
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import arcjet, { detectBot, slidingWindow } from '@arcjet/next'
-import { headers } from 'next/headers'
-
-const aj = arcjet({
-  key: process.env.ARCJET_KEY!,
-  rules: [
-    detectBot({ mode: 'LIVE', allow: [] }),
-    slidingWindow({ mode: 'LIVE', interval: '1m', max: 3 }),
-  ],
-})
+import { protectAction } from '@/lib/arcjet'
 
 export async function deleteAccount(password: string) {
-  const headersList = await headers()
-  const decision = await aj.protect({ headers: headersList })
-
-  if (decision.isDenied()) {
-    if (decision.reason.isRateLimit()) {
-      throw new Error('Too many requests. Please try again later.')
-    }
-    throw new Error('Request blocked')
-  }
+  await protectAction('deleteAccount')
 
   const supabase = await createClient()
 

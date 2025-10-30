@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 // Hook imports
 import { useNotifications } from '@/features/organizations/notifications/queries/useNotifications'
 import { markAsRead, markAllAsRead } from '@/features/organizations/notifications/actions/markAsRead'
+import { deleteNotification } from '@/features/organizations/notifications/actions/deleteNotification'
 import { acceptInvitation, declineInvitation } from '@/features/organizations/members/actions/handleInvitation'
 import { useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
@@ -46,8 +47,8 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
     setProcessingId(notificationId)
     try {
       await acceptInvitation(invitationId)
-      // Mark as read and delete the notification after accepting
-      await handleMarkAsRead(notificationId)
+      // Delete the notification after accepting
+      await deleteNotification(notificationId)
       queryClient.invalidateQueries({ queryKey: ['organizations'] })
       queryClient.invalidateQueries({ queryKey: ['organization-members'] })
       queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
@@ -62,8 +63,8 @@ export default function NotificationsDropdown({ userId }: NotificationsDropdownP
     setProcessingId(notificationId)
     try {
       await declineInvitation(invitationId)
-      // Mark as read and delete the notification after declining
-      await handleMarkAsRead(notificationId)
+      // Delete the notification after declining
+      await deleteNotification(notificationId)
       queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
     } catch (error) {
       console.error('Failed to decline invitation:', error)

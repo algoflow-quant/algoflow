@@ -4,7 +4,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 // Update last seen action
-import { updateLastSeen } from '@/features/profiles/settings/actions/updateLastSeen'
+import { updateLastSeen } from '@/features/organizations/members/actions/updateLastSeen'
 
 // Helpers
 import {

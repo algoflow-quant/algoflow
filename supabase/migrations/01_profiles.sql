@@ -19,13 +19,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 CREATE INDEX idx_profiles_role ON public.profiles(role);
 CREATE INDEX idx_profiles_last_seen ON public.profiles(last_seen_at);
 
--- RLS for Realtime subscriptions only
--- Application uses ABAC (service role bypasses RLS)
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+-- No RLS needed - all queries use service role which bypasses RLS
+-- Authorization handled by ABAC in application layer
 
-CREATE POLICY "profiles_realtime_select"
-  ON profiles FOR SELECT
-  USING (auth.uid() = id);
+-- Auto-update updated_at timestamp (uses universal function from 07)
+CREATE TRIGGER trigger_update_profiles_timestamp
+    BEFORE UPDATE ON profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Auto-create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -50,5 +51,8 @@ CREATE TRIGGER on_auth_user_created
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_user();
 
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+-- Broadcast changes via realtime.send() (uses universal function from 00)
+CREATE TRIGGER trigger_broadcast_profiles_change
+    AFTER INSERT OR UPDATE OR DELETE ON profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION broadcast_change();

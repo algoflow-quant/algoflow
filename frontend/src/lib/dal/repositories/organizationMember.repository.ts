@@ -5,7 +5,7 @@ import { Repository } from '../base/repository'
 import { requireAuthorization } from '@/lib/abac/authorizer'
 
 // Custom error classes
-import { NotFoundError, ValidationError } from '../utils/errors'
+import { NotFoundError } from '../utils/errors'
 
 // organization_members interface for type safety
 import type { organization_members } from '@/generated/prisma'
@@ -39,9 +39,11 @@ export class OrganizationMemberRepository extends Repository {
 
         // Fetch all members with user profiles included
         return await this.prisma.organization_members.findMany({
-            where: { organization_id: organizationId },
+            where: {
+                organization_id: organizationId,
+            },
             include: {
-                user: true, // Include the profiles relation
+                user: true,
             },
             orderBy: { joined_at: 'asc' },
         })
@@ -99,21 +101,7 @@ export class OrganizationMemberRepository extends Repository {
             },
         })
 
-        // Check if member already exists
-        const existingMember = await this.prisma.organization_members.findUnique({
-            where: {
-                organization_id_user_id: {
-                    organization_id: data.organizationId,
-                    user_id: data.userId,
-                },
-            },
-        })
-
-        if (existingMember) {
-            throw new ValidationError('User is already a member of this organization')
-        }
-
-        // Add member
+        // Add new member (will fail if already exists due to UNIQUE constraint)
         const member = await this.prisma.organization_members.create({
             data: {
                 organization_id: data.organizationId,
@@ -163,7 +151,7 @@ export class OrganizationMemberRepository extends Repository {
 
     //=========================== DELETE OPERATIONS ============================
 
-    // Remove member from organization
+    // Remove member from organization (hard delete)
     async removeMember(memberId: string): Promise<void> {
         // Fetch member to get org context
         const member = await this.prisma.organization_members.findUnique({
@@ -186,13 +174,13 @@ export class OrganizationMemberRepository extends Repository {
             },
         })
 
-        // Remove member
+        // Hard delete member
         await this.prisma.organization_members.delete({
             where: { id: memberId },
         })
     }
 
-    // Leave organization (user removes themselves)
+    // Leave organization (user removes themselves - hard delete)
     async leaveOrganization(organizationId: string): Promise<void> {
         // Find user's membership
         const member = await this.prisma.organization_members.findUnique({
@@ -220,7 +208,7 @@ export class OrganizationMemberRepository extends Repository {
             },
         })
 
-        // Remove membership
+        // Hard delete membership
         await this.prisma.organization_members.delete({
             where: { id: member.id },
         })

@@ -1,7 +1,6 @@
 'use server'
 
 import { buildUserContextWithOrg } from '@/lib/dal/context'
-import { OrganizationMemberRepository } from '@/lib/dal/repositories'
 
 /**
  * Check if current user is still a member of an organization
@@ -10,7 +9,7 @@ import { OrganizationMemberRepository } from '@/lib/dal/repositories'
 export async function checkMembership(organizationId: string): Promise<boolean> {
   const userContext = await buildUserContextWithOrg(organizationId)
 
-  // If buildUserContextWithOrg succeeds, user is a member
-  // It throws if user is not a member (see context.ts line 50-58)
-  return !!userContext
+  // Check if user has organization context (organizationId and organizationRole are set)
+  // If they're undefined, user is not a member
+  return !!(userContext?.organizationId && userContext?.organizationRole)
 }

@@ -1,51 +1,56 @@
 'use client'
 
-// import query hook and query client (tanstack)
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-
-//import useffect and useMemo from react
 import { useEffect, useMemo } from 'react'
-
-// import supabase client
 import { createClient } from '@/lib/supabase/client'
-
-// import get notifications server action with realtime
 import { getNotifications } from '../actions/getNotifications'
 
+// Hook to get all notifications for a user with realtime updates
+// Subscribes to the user-specific broadcast channel for instant notification updates
 export function useNotifications(userId: string) {
-    const queryClient = useQueryClient() // Create a tanstack query client
-    const supabase = useMemo(() => createClient(), []) // memoize the supabase in realtime calls to avoid creating a bunch of clients
+    const queryClient = useQueryClient()
 
-    // Query the notficaitons on the server intitally with ISR 
+    // Memoize the Supabase client so we don't create new WebSocket connections on every render
+    // This improves performance and prevents connection leaks
+    const supabase = useMemo(() => createClient(), [])
+
+    // Initial fetch of notifications via server action
     const query = useQuery({
         queryKey: ['notifications', userId],
         queryFn: () => getNotifications(userId),
-        staleTime: 1000 * 30, // 30 seconds
+        staleTime: 1000 * 30, // Keep data fresh for 30 seconds before allowing refetch
     })
 
-    // Realtime subscription to fetch live changes
+    // Subscribe to realtime updates for this specific user
+    // Database triggers broadcast to user-specific channels when notifications change
     useEffect(() => {
+        // Create a channel unique to this user
+        // Format: user-{uuid} so only this user receives their notification updates
         const channel = supabase
-        .channel(`notifications-${userId}`)
+        .channel(`user-${userId}`)
         .on(
-            'postgres_changes',
-            {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${userId}`,
-            },
-            (payload) => {
-            console.log('Notification change:', payload)
+            'broadcast',
+            { event: 'notifications-change' }, // Listen for notification changes
+            (payload: any) => {
+            console.log('[useNotifications] Broadcast received:', payload)
+            console.log('  Invalidating notifications query')
+
+            // Tell React Query to refetch notifications
+            // This ensures the UI always shows the latest data
             queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
             }
         )
-        .subscribe()
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log(`[useNotifications] Subscribed to channel: user-${userId}`)
+            }
+        })
 
+        // Cleanup: unsubscribe when component unmounts or userId changes
         return () => {
         supabase.removeChannel(channel)
         }
-    }, [userId, queryClient, supabase]) // Cleanup dependecy array
+    }, [userId, queryClient, supabase])
 
     return query
 }

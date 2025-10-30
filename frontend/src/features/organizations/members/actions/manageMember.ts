@@ -3,34 +3,14 @@
 // DAL imports
 import { buildUserContextWithOrg } from '@/lib/dal/context'
 import { OrganizationMemberRepository } from '@/lib/dal/repositories'
-
-// Arcjet imports
-import { headers } from 'next/headers'
-import arcjet, { slidingWindow, detectBot } from '@arcjet/next'
-
-// Arcjet configuration for member management protection
-const aj = arcjet({
-    key: process.env.ARCJET_KEY!,
-    rules: [
-        detectBot({ mode: 'LIVE', allow: [] }),
-        slidingWindow({ mode: 'LIVE', interval: '1m', max: 20 })
-    ]
-})
+import { protectAction } from '@/lib/arcjet'
 
 /**
  * Remove member from organization - refactored to use DAL
  */
 export async function removeMember(organizationId: string, userId: string) {
     // Arcjet rate limiting
-    const headersList = await headers()
-    const decision = await aj.protect({ headers: headersList })
-
-    if (decision.isDenied()) {
-        if (decision.reason.isRateLimit()) {
-            throw new Error('Too many member management actions. Please try again later.')
-        }
-        throw new Error('Request blocked')
-    }
+    await protectAction('manageMember')
 
     // Build user context with organization membership
     const userContext = await buildUserContextWithOrg(organizationId)
@@ -64,15 +44,7 @@ export async function updateMemberRole(
     newRole: 'moderator' | 'member'
 ) {
     // Arcjet rate limiting
-    const headersList = await headers()
-    const decision = await aj.protect({ headers: headersList })
-
-    if (decision.isDenied()) {
-        if (decision.reason.isRateLimit()) {
-            throw new Error('Too many member management actions. Please try again later.')
-        }
-        throw new Error('Request blocked')
-    }
+    await protectAction('manageMember')
 
     // Build user context with organization membership
     const userContext = await buildUserContextWithOrg(organizationId)

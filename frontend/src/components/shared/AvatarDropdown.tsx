@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { User, Database, Command, LogOut } from 'lucide-react'
+import { User, Database, Command, LogOut, Home } from 'lucide-react'
 import { logout } from '@/features/auth'
 import { ThemeSelector } from '@/components/layout/public_header/ThemeSelector'
 import { UserSettingsDialog } from '@/features/profiles/settings/components/UserSettingsDialog'
@@ -67,6 +67,12 @@ export default function AvatarDropdown({ user }: AvatarDropdownProps) {
             <Link href="/dashboard" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               All Organizations
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/" className="flex items-center gap-2">
+              <Home className="h-4 w-4" />
+              Landing Page
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem disabled className="flex items-center justify-between">

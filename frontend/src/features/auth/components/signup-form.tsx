@@ -1,6 +1,7 @@
 'use client'
 
 import { useFormStatus } from "react-dom"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { signup } from "@/features/auth"
 import LoadingAnimation from "@/components/shared/LoadingAnimation"
+import { AlertCircle } from "lucide-react"
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -42,6 +44,9 @@ function SubmitButton() {
 }
 
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
+
   return (
     <Card className="bg-muted/50 backdrop-blur-sm" {...props}>
       <CardHeader>
@@ -51,6 +56,12 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{decodeURIComponent(error)}</span>
+          </div>
+        )}
         <form>
           <FieldGroup>
             <Field>

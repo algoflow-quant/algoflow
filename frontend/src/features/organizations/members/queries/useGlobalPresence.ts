@@ -3,42 +3,30 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { updateLastSeen } from '@/features/profiles/settings/actions/updateLastSeen'
+import { updateLastSeen } from '@/features/organizations/members/actions/updateLastSeen'
 
-/**
- * Global presence system using Supabase Realtime Presence
- * Tracks which users are currently online anywhere in the app
- *
- * Features:
- * - Real-time online/offline status via Supabase Presence
- * - Updates last_seen_at only on login/logout (not polling)
- * - Global state shared across all components
- */
-
-// Presence payload structure
+// What each presence message looks like when sent over the wire
 interface PresencePayload {
   user_id: string
   online_at: string
 }
 
-// Supabase presence state type
+// Supabase stores presence as a record where each key is a user and value is their presence data
 type PresenceState = Record<string, PresencePayload[]>
 
-// Global state: Track all currently online users
+// Global set of all users who are currently online (shared across all components)
 const onlineUsers = new Set<string>()
 
-// Global listeners: Components that re-render on presence changes
+// Global list of components that want to re-render when presence changes
 const presenceListeners = new Set<() => void>()
 
-// Notify all subscribed components when presence state changes
+// Tell all listening components that someone went online or offline
 function notifyPresenceChange() {
-  presenceListeners.forEach(listener => listener())
+  presenceListeners.forEach(listener => listener()) // call each listener to trigger re-render
 }
 
-/**
- * Track current user's presence globally
- * Should be called once at app root level
- */
+// Main hook: tracks current user's presence and listens to everyone else's presence
+// Call this once at the app root level (like in a layout component)
 export function useGlobalPresence(userId: string | null) {
   useEffect(() => {
     if (!userId) return
@@ -46,19 +34,20 @@ export function useGlobalPresence(userId: string | null) {
     const supabase = createClient()
     let presenceChannel: RealtimeChannel
 
-    // Update last_seen_at on login (mount) - using DAL + ABAC
+    // Update the user's last_seen_at timestamp in the database
     const updatePresence = async () => {
       try {
-        await updateLastSeen()
+        await updateLastSeen() // update last seen via server action
       } catch (error) {
         console.error('[Presence] Failed to update last_seen_at:', error)
       }
     }
 
-    // Update on login
+    // Update timestamp when user first comes online
     updatePresence()
 
-    // Create global presence channel with custom key (userId)
+    // Create a global presence channel that everyone shares
+    // Each user gets a unique key so Supabase can track them individually
     presenceChannel = supabase.channel('app-global-presence', {
       config: {
         presence: {
@@ -67,111 +56,116 @@ export function useGlobalPresence(userId: string | null) {
       },
     })
 
-    // Sync: Rebuild online users from current state
+    // Sync event: fired when we first connect or when presence state gets rebuilt
+    // This gives us the full list of everyone who's currently online
     presenceChannel.on('presence', { event: 'sync' }, () => {
-      const state = presenceChannel.presenceState() as PresenceState
-      const previousSize = onlineUsers.size
+      const state = presenceChannel.presenceState() as PresenceState // get full presence state
+      const previousSize = onlineUsers.size // remember previous count
 
-      onlineUsers.clear()
-      Object.values(state).forEach((presences) => {
-        presences.forEach((presence) => {
-          if (presence.user_id) {
-            onlineUsers.add(presence.user_id)
+      // Rebuild our local set of online users from the full state
+      onlineUsers.clear() // clear current state
+      Object.values(state).forEach((presences) => { // for each user
+        presences.forEach((presence) => { // for each presence record
+          if (presence.user_id) { // ensure user_id exists
+            onlineUsers.add(presence.user_id) // add user to online set
           }
         })
       })
 
-      // Only notify if state actually changed
+      // Only trigger re-renders if the count actually changed
       if (previousSize !== onlineUsers.size) {
         notifyPresenceChange()
       }
     })
 
-    // Join: User comes online
-    presenceChannel.on('presence', { event: 'join' }, ({ newPresences }) => {
-      let changed = false
-      newPresences.forEach((presence) => {
-        if (presence.user_id && !onlineUsers.has(presence.user_id)) {
-          onlineUsers.add(presence.user_id)
-          changed = true
+    // Join event: someone just came online
+    presenceChannel.on('presence', { event: 'join' }, ({ newPresences }) => { // array of new presences
+      let changed = false // track if anything changed
+      newPresences.forEach((presence) => { // for each new presence
+        if (presence.user_id && !onlineUsers.has(presence.user_id)) { // if new user
+          onlineUsers.add(presence.user_id) // add to online set
+          changed = true // mark that something changed
         }
       })
-      if (changed) notifyPresenceChange()
+      if (changed) notifyPresenceChange() // notify if there was a change
     })
 
-    // Leave: User goes offline
-    presenceChannel.on('presence', { event: 'leave' }, ({ leftPresences }) => {
-      let changed = false
-      leftPresences.forEach((presence) => {
-        if (presence.user_id && onlineUsers.has(presence.user_id)) {
-          onlineUsers.delete(presence.user_id)
-          changed = true
+    // Leave event: someone just went offline
+    presenceChannel.on('presence', { event: 'leave' }, ({ leftPresences }) => { // array of left presences
+      let changed = false // track if anything changed
+      leftPresences.forEach((presence) => { // for each left presence
+        if (presence.user_id && onlineUsers.has(presence.user_id)) { // if user was online
+          onlineUsers.delete(presence.user_id) // remove from online set
+          changed = true // mark that something changed
         }
       })
-      if (changed) notifyPresenceChange()
+      if (changed) notifyPresenceChange() // notify if there was a change
     })
 
-    // Subscribe and track presence
+    // Subscribe to the channel and start broadcasting our presence
     presenceChannel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await presenceChannel.track({
-          user_id: userId,
-          online_at: new Date().toISOString(),
+      if (status === 'SUBSCRIBED') { // successfully subscribed
+        // Tell everyone else we're online
+        await presenceChannel.track({ // our presence data
+          user_id: userId, // our user ID
+          online_at: new Date().toISOString(), // timestamp
         })
       }
     })
 
-    // Cleanup on logout (unmount)
+    // Cleanup when user logs out or component unmounts
     return () => {
-      // Update last_seen_at on logout - using DAL + ABAC
+      // Update last_seen_at one final time
       updatePresence().then(() => {
-        // Untrack and unsubscribe
-        if (presenceChannel) {
-          presenceChannel.untrack().then(() => {
-            presenceChannel.unsubscribe()
+        // Stop broadcasting and disconnect
+        if (presenceChannel) { // ensure channel exists
+          presenceChannel.untrack().then(() => { // stop tracking presence
+            presenceChannel.unsubscribe() // unsubscribe from channel
           })
         }
       })
 
-      // Immediately remove from local state for instant UI update
-      onlineUsers.delete(userId)
-      notifyPresenceChange()
+      // Remove from local state immediately for instant UI updates
+      onlineUsers.delete(userId) // remove ourselves from online set
+      notifyPresenceChange() // notify listeners
     }
   }, [userId])
 }
 
-/**
- * Subscribe to presence changes and trigger component re-renders
- */
+// Hook for components that need to re-render when presence changes
+// HOW IT WORKS: Components call this hook and get a "trigger" number back
+// When someone goes online/offline, we increment the trigger, which causes a re-render
+// Think of it like a version number that bumps up whenever presence state changes
 export function usePresenceSubscription() {
-  const [trigger, setTrigger] = useState(0)
+  const [trigger, setTrigger] = useState(0) // simple counter to trigger re-renders
 
-  useEffect(() => {
+  useEffect(() => { 
+    // Our listener just increments the trigger (prev is old value, we return new value)
     const listener = () => setTrigger(prev => prev + 1)
+
+    // Add ourselves to the global list of listeners
     presenceListeners.add(listener)
-    return () => presenceListeners.delete(listener)
+
+    // Cleanup: remove ourselves when component unmounts
+    return () => {
+      presenceListeners.delete(listener)
+    }
   }, [])
 
   return trigger
 }
 
-/**
- * Check if a user is currently online
- */
+// Check if a specific user is currently online
 export function isUserOnline(userId: string): boolean {
   return onlineUsers.has(userId)
 }
 
-/**
- * Get count of all currently online users
- */
+// Get total count of online users
 export function getOnlineUserCount(): number {
   return onlineUsers.size
 }
 
-/**
- * Get all currently online user IDs
- */
+// Get array of all online user IDs
 export function getOnlineUsers(): string[] {
   return Array.from(onlineUsers)
 }

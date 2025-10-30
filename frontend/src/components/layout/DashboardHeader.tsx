@@ -40,7 +40,7 @@ export default async function SpaHeader() {
       <div className="flex h-13 items-center justify-between px-4">
         {/* Left side */}
         <div className="flex items-center gap-4 -ml-2.5">
-          <Logo showText={false} href="/lab" />
+          <Logo showText={false} href="/dashboard" />
         </div>
 
         {/* Right side */}

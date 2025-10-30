@@ -3,19 +3,7 @@
 // DAL imports - using repository pattern with ABAC authorization
 import { buildUserContext } from '@/lib/dal/context'
 import { InvitationRepository } from '@/lib/dal/repositories'
-
-// Arcjet rate limiting and bot protection
-import { headers } from 'next/headers'
-import arcjet, { slidingWindow, detectBot } from '@arcjet/next'
-
-// Arcjet configuration for invitation handling protection
-const aj = arcjet({
-  key: process.env.ARCJET_KEY!,
-  rules: [
-    detectBot({ mode: 'LIVE', allow: [] }),
-    slidingWindow({ mode: 'LIVE', interval: '1m', max: 10 }) // 10 invitation actions per minute
-  ]
-})
+import { protectAction } from '@/lib/arcjet'
 
 /**
  * Accept an organization invitation
@@ -25,15 +13,7 @@ const aj = arcjet({
  */
 export async function acceptInvitation(invitationId: string) {
     // Arcjet rate limiting protection
-    const headersList = await headers()
-    const decision = await aj.protect({ headers: headersList })
-
-    if (decision.isDenied()) {
-        if (decision.reason.isRateLimit()) {
-            throw new Error('Too many invitation actions. Please try again later.')
-        }
-        throw new Error('Request blocked')
-    }
+    await protectAction('handleInvitation')
 
     // Build user context for ABAC authorization
     const userContext = await buildUserContext()
@@ -54,15 +34,7 @@ export async function acceptInvitation(invitationId: string) {
  */
 export async function declineInvitation(invitationId: string) {
     // Arcjet rate limiting protection
-    const headersList = await headers()
-    const decision = await aj.protect({ headers: headersList })
-
-    if (decision.isDenied()) {
-        if (decision.reason.isRateLimit()) {
-            throw new Error('Too many invitation actions. Please try again later.')
-        }
-        throw new Error('Request blocked')
-    }
+    await protectAction('handleInvitation')
 
     // Build user context for ABAC authorization
     const userContext = await buildUserContext()

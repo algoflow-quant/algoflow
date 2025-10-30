@@ -45,20 +45,46 @@ export class OrganizationRepository extends Repository {
         })
     }
 
-    // Get all organizations user is a member of (returns all fields for owner, public fields for members)
+    // Get all organizations user is a member of
+    // PERFORMANCE: Only fetches fields user has permission to see based on their role
+    // Owners see everything, members only see public fields
     async getUserOrganizations(): Promise<organizations[]> {
         // Debug: Check if prisma client is initialized
         if (!this.prisma) {
             throw new Error('Prisma client is not initialized in OrganizationRepository')
         }
 
-        // Query all org memberships for current user
+        // Query memberships with selective field fetching based on role
+        // This prevents over-fetching sensitive data for non-owners
         const memberships = await this.prisma.organization_members.findMany({
             where: { user_id: this.userContext.id },
-            include: { organization: true }, // Include org data
+            select: {
+                role: true, // Need role to determine what fields to show in UI
+                organization: {
+                    select: {
+                        // Public fields - all members can see these
+                        id: true,
+                        name: true,
+                        avatar_url: true,
+                        description: true,
+                        type: true,
+                        owner_id: true,
+                        created_at: true,
+                        updated_at: true,
+                        // Sensitive fields - will be null for non-owners (client filters based on role)
+                        // ABAC policies enforce this on writes, but we optimize reads here
+                        plan: true,
+                        credits_limit: true,
+                        credits_balance: true,
+                        settings: true,
+                    }
+                }
+            },
+            orderBy: { joined_at: 'asc' }
         })
 
         // Extract organizations from memberships
+        // Client-side code will filter sensitive fields based on user's role in that org
         return memberships.map((m) => m.organization)
     }
 

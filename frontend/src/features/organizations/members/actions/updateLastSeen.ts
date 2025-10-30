@@ -8,13 +8,13 @@ import { ProfileRepository } from '@/lib/dal/repositories/profile.repository'
  * Uses DAL + ABAC for authorization
  */
 export async function updateLastSeen() {
-  const userContext = await buildUserContext()
+  const userContext = await buildUserContext() // build user context for ABAC
   if (!userContext) {
     throw new Error('Not authenticated')
   }
 
-  const profileRepo = new ProfileRepository(userContext)
-  await profileRepo.updateLastSeen()
+  const profileRepo = new ProfileRepository(userContext) // instantiate profile repository
+  await profileRepo.updateLastSeen() // update last_seen_at via repository
 
   return { success: true }
 }

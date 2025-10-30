@@ -1,24 +1,20 @@
 import { Repository } from '../base/repository'
-import { authorize, requireAuthorization } from '@/lib/abac/authorizer'
+import { requireAuthorization } from '@/lib/abac/authorizer'
 import { ValidationError } from '../utils/errors'
 import type { profiles } from '@/generated/prisma'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 
 export class ProfileRepository extends Repository {
   // ========== READ OPERATIONS ==========
 
   // Get profile (ABAC controls which fields user can access)
   async getProfile(profileId: string): Promise<profiles | null> {
-    // Check ABAC permissions
-    const result = authorize({
+    // ABAC check - can user read this profile?
+    requireAuthorization({
       user: this.userContext,
       action: 'read',
       resource: { type: 'profile', id: profileId, ownerId: profileId },
     })
-
-    if (!result.granted) {
-      this.unauthorized(result.reason)
-    }
 
     // Query database - ABAC controls field-level access in application logic
     return await this.prisma.profiles.findUnique({
@@ -138,11 +134,8 @@ export class ProfileRepository extends Repository {
       throw new ValidationError('File size must be less than 5MB')
     }
 
-    // Initialize Supabase client for storage operations
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use service role client for storage operations
+    const supabase = createServiceRoleClient()
 
     // Get file extension
     const fileExt = file.name.split('.').pop()
@@ -155,7 +148,7 @@ export class ProfileRepository extends Repository {
       .list(this.userContext.id)
 
     if (existingFiles && existingFiles.length > 0) {
-      const filesToDelete = existingFiles.map((f) => `${this.userContext.id}/${f.name}`)
+      const filesToDelete = existingFiles.map((f: { name: string }) => `${this.userContext.id}/${f.name}`)
       await supabase.storage.from('avatars').remove(filesToDelete)
     }
 
@@ -201,11 +194,8 @@ export class ProfileRepository extends Repository {
       },
     })
 
-    // Initialize Supabase client for storage operations
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use service role client for storage operations
+    const supabase = createServiceRoleClient()
 
     // Delete all avatars from storage
     const { data: existingFiles } = await supabase.storage
@@ -213,7 +203,7 @@ export class ProfileRepository extends Repository {
       .list(this.userContext.id)
 
     if (existingFiles && existingFiles.length > 0) {
-      const filesToDelete = existingFiles.map((f) => `${this.userContext.id}/${f.name}`)
+      const filesToDelete = existingFiles.map((f: { name: string }) => `${this.userContext.id}/${f.name}`)
       const { error: deleteError } = await supabase.storage
         .from('avatars')
         .remove(filesToDelete)

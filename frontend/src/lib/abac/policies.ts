@@ -20,7 +20,7 @@ const profilePolicies: PermissionPolicy[] = [
             if (req.resource.type !== 'profile') return false
 
             const isAdmin = req.user.globalRole === 'admin'
-            const isOwner = req.user.id === req.resource.ownerId
+            const isOwner = req.user.id === req.resource.ownerId 
 
             // Private fields that require ownership or admin
             const privateFields = ['email', 'role', 'last_seen_at']
@@ -95,7 +95,7 @@ const organizationPolicies: PermissionPolicy[] = [
             // Check plan being created (passed from DAL)
             if (req.resource.plan === 'free') {
                 // Limit 1 free org per user
-                return (req.resource.existingFreeOrgCount ?? 0) === 0
+                return (req.resource.existingFreeOrgCount ?? 0) === 0 // nullish coalescing operator to default to 0 if null or undefined
             }
 
             // Paid orgs - no limit

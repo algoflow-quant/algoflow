@@ -7,15 +7,27 @@ import { allPolicies } from './policies'
 /**
  * Authorization Service
  * Evaluates requests against policies to allow/deny actions
+ *
+ * PERFORMANCE: Uses Map-based cache for O(1) policy lookup instead of O(n) array search
  */
 
-// Check if action is allowed. Universal permision checking function
-export function authorize(request: AuthorizationRequest): AuthorizationResult {
-    const policy = allPolicies.find( // All policies was exported from policies
-        (p) => p.resource === request.resource.type && p.action === request.action
-    )
+// Build policy cache on module load for instant O(1) lookups
+// Map key format: "resource:action" (e.g., "organization:read")
+const policyCache = new Map<string, typeof allPolicies[0]>()
 
-    // If no policy in the request
+allPolicies.forEach(policy => {
+    const key = `${policy.resource}:${policy.action}`
+    policyCache.set(key, policy)
+})
+
+// Check if action is allowed. Universal permission checking function
+// Now uses O(1) Map lookup instead of O(n) array search
+export function authorize(request: AuthorizationRequest): AuthorizationResult {
+    // Fast O(1) lookup instead of O(n) find()
+    const key = `${request.resource.type}:${request.action}`
+    const policy = policyCache.get(key)
+
+    // If no policy exists for this resource + action combination
     if (!policy) {
         return {
         granted: false,
@@ -23,10 +35,10 @@ export function authorize(request: AuthorizationRequest): AuthorizationResult {
         }
     }
 
-    // return whether or not the policy was granted
+    // Execute the policy rule to determine if access is granted
     const granted = policy.rule(request)
 
-    // return the status or key val with undefined and the description of what rule we violated
+    // Return authorization result with reason if denied
     return {
         granted,
         reason: granted ? undefined : policy.description,

@@ -4,23 +4,7 @@
 import { buildUserContextWithOrg, buildUserContext } from '@/lib/dal/context'
 import { InvitationRepository, NotificationRepository, OrganizationRepository } from '@/lib/dal/repositories'
 import { prisma } from '@/lib/dal/utils/prisma'
-
-// Arcjet rate limiting and bot protection
-import { headers } from 'next/headers'
-import arcjet, { slidingWindow, detectBot } from '@arcjet/next'
-
-// Arcjet configuration for invitation sending protection
-const aj = arcjet({
-  key: process.env.ARCJET_KEY!,
-  rules: [
-    detectBot({ mode: 'LIVE', allow: [] }),
-    slidingWindow({
-      mode: 'LIVE',
-      interval: '1m',
-      max: 20 // Max 20 invitations per minute per user
-    })
-  ]
-})
+import { protectAction } from '@/lib/arcjet'
 
 interface SendInvitationParams {
     organizationId: string
@@ -36,15 +20,7 @@ interface SendInvitationParams {
  */
 export async function sendInvitation({ organizationId, email, role }: SendInvitationParams) {
     // Arcjet rate limiting protection
-    const headersList = await headers()
-    const decision = await aj.protect({ headers: headersList })
-
-    if (decision.isDenied()) {
-        if (decision.reason.isRateLimit()) {
-            throw new Error('Too many invitations. Please try again later.')
-        }
-        throw new Error('Request blocked')
-    }
+    await protectAction('sendInvitation')
 
     // Build user context with organization membership for ABAC
     const userContext = await buildUserContextWithOrg(organizationId)

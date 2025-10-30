@@ -1,11 +1,11 @@
-import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/lib/dal/utils/prisma'
 import type { UserContext } from '@/lib/abac/types'
 
 // Build UserContext from Supabase auth session
-// Uses regular client for auth, service role for data (bypasses RLS - ABAC handles authorization)
+// Uses Supabase for auth, Prisma for data queries
 export async function buildUserContext(): Promise<UserContext | null> {
   const authClient = await createClient()
-  const supabase = createServiceRoleClient()
 
   const {
     data: { user },
@@ -13,12 +13,11 @@ export async function buildUserContext(): Promise<UserContext | null> {
 
   if (!user) return null
 
-  // Get user's profile for role (single profiles table)
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  // Get user's profile for role using Prisma
+  const profile = await prisma.profiles.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  })
 
   return {
     id: user.id,
@@ -27,10 +26,10 @@ export async function buildUserContext(): Promise<UserContext | null> {
 }
 
 // Build UserContext with organization context (for org-specific operations)
-// Uses regular client for auth, service role for data (bypasses RLS - ABAC handles authorization)
+// PERFORMANCE: Uses Prisma's include to fetch both member and profile data in one query
+// Uses Supabase for auth, Prisma for data queries
 export async function buildUserContextWithOrg(organizationId: string): Promise<UserContext | null> {
   const authClient = await createClient()
-  const supabase = createServiceRoleClient()
 
   const {
     data: { user },
@@ -41,35 +40,40 @@ export async function buildUserContextWithOrg(organizationId: string): Promise<U
     return null
   }
 
-  // Get user's profile for role (single profiles table)
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  // Fetch membership with profile data using Prisma (single query with JOIN)
+  const member = await prisma.organization_members.findUnique({
+    where: {
+      organization_id_user_id: {
+        organization_id: organizationId,
+        user_id: user.id,
+      },
+    },
+    include: {
+      user: {
+        select: { role: true },
+      },
+    },
+  })
 
-  if (profileError) {
-    console.error('buildUserContextWithOrg: Profile query error', profileError)
-    return null
-  }
+  if (!member) {
+    // User not a member of this org - fetch profile for global role only
+    const profile = await prisma.profiles.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    })
 
-  // Get user's membership in the specified org
-  const { data: membership, error: membershipError } = await supabase
-    .from('organization_members')
-    .select('organization_id, role')
-    .eq('user_id', user.id)
-    .eq('organization_id', organizationId)
-    .single()
-
-  if (membershipError) {
-    console.error('buildUserContextWithOrg: Membership query error', membershipError)
-    // Return context without org info - ABAC will deny if org membership is required
+    return {
+      id: user.id,
+      globalRole: (profile?.role as 'admin' | 'standard') || 'standard',
+      organizationId: undefined,
+      organizationRole: undefined,
+    }
   }
 
   return {
     id: user.id,
-    globalRole: (profile?.role as 'admin' | 'standard') || 'standard',
-    organizationId: membership?.organization_id,
-    organizationRole: membership?.role as 'owner' | 'moderator' | 'member' | undefined,
+    globalRole: (member.user.role as 'admin' | 'standard') || 'standard',
+    organizationId: member.organization_id,
+    organizationRole: member.role as 'owner' | 'moderator' | 'member',
   }
 }
