@@ -1,3 +1,13 @@
+## v2.4.0 (2025-10-30)
+
+### Feat
+
+- **about-hero**: add hero page with image for about
+
+### Fix
+
+- **about-hero**: changed icon and content for 4 values below image
+
 ## v2.3.0 (2025-10-28)
 
 ### Feat

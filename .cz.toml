@@ -2,7 +2,7 @@
 name = "cz_conventional_commits"
 tag_format = "v$version"
 version_scheme = "semver"
-version = "2.3.0"
+version = "2.4.0"
 version_files = [
     "version.json"
 ]
