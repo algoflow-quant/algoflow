@@ -3,24 +3,24 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import { AnimatedLineChart } from "@/components/ui/line-chart"
 import { GrTest } from "react-icons/gr"
-import { TrendingUp, Database, Zap } from "lucide-react"
+import { Lightbulb, Brain, FlaskConical } from "lucide-react"
 
 export default function ResearchPage() {
   const features = [
     {
-      icon: <TrendingUp className="size-6" aria-hidden />,
-      title: "Historical Tick Data",
-      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
+      icon: <Brain className="size-6" aria-hidden />,
+      title: "AI-Powered Insights",
+      description: "Machine learning models analyze market patterns and anomalies to surface high-probability trading opportunities."
     },
     {
-      icon: <Database className="size-6" aria-hidden />,
-      title: "Alternative Datasets",
-      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
+      icon: <FlaskConical className="size-6" aria-hidden />,
+      title: "Hypothesis Testing",
+      description: "Design and test trading hypotheses with statistical rigor using comprehensive backtesting and validation frameworks."
     },
     {
-      icon: <Zap className="size-6" aria-hidden />,
-      title: "Real-Time Feeds",
-      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+      icon: <Lightbulb className="size-6" aria-hidden />,
+      title: "Alpha Discovery",
+      description: "Identify uncorrelated alpha signals through factor analysis, regime detection, and advanced quantitative research tools."
     }
   ]
 

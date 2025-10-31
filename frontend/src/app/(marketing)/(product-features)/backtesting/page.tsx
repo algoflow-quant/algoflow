@@ -1,23 +1,23 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import { Terminal, TypingAnimation, AnimatedSpan } from "@/components/ui/terminal"
-import { LineChart, TrendingUp, Database, Zap } from "lucide-react"
+import { LineChart, TrendingUp, Settings, BarChart3 } from "lucide-react"
 
 export default function BacktestingPage() {
   const features = [
     {
       icon: <TrendingUp className="size-6" aria-hidden />,
-      title: "Historical Tick Data",
-      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
+      title: "Historical Simulation",
+      description: "Test strategies on years of accurate historical data with realistic market conditions and transaction costs."
     },
     {
-      icon: <Database className="size-6" aria-hidden />,
-      title: "Alternative Datasets",
-      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
+      icon: <Settings className="size-6" aria-hidden />,
+      title: "Parameter Optimization",
+      description: "Automatically discover optimal strategy parameters through systematic testing across multiple dimensions."
     },
     {
-      icon: <Zap className="size-6" aria-hidden />,
-      title: "Real-Time Feeds",
-      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+      icon: <BarChart3 className="size-6" aria-hidden />,
+      title: "Performance Analytics",
+      description: "Comprehensive metrics including Sharpe ratio, drawdowns, win rates, and custom KPIs to evaluate strategy performance."
     }
   ]
 

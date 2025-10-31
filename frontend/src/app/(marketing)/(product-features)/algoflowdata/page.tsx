@@ -3,7 +3,7 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import { AnimatedLineChart } from "@/components/ui/line-chart"
 import { DataCard, type DataFeedData } from "@/components/ui/data-card"
-import { Database, TrendingUp, Zap } from "lucide-react"
+import { Database, Zap, Activity, Server } from "lucide-react"
 
 // Data feeds
 const dataFeeds: DataFeedData[] = [
@@ -15,19 +15,19 @@ const dataFeeds: DataFeedData[] = [
 export default function AlgoFlowDataPage() {
   const features = [
     {
-      icon: <TrendingUp className="size-6" aria-hidden />,
-      title: "Historical Tick Data",
-      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
-    },
-    {
-      icon: <Database className="size-6" aria-hidden />,
-      title: "Alternative Datasets",
-      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
-    },
-    {
       icon: <Zap className="size-6" aria-hidden />,
-      title: "Real-Time Feeds",
-      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+      title: "Ultra-Low Latency",
+      description: "Sub-millisecond data delivery with optimized infrastructure for high-frequency trading and real-time analytics."
+    },
+    {
+      icon: <Server className="size-6" aria-hidden />,
+      title: "99.99% Uptime",
+      description: "Enterprise-grade reliability with redundant systems, automatic failover, and continuous monitoring for uninterrupted access."
+    },
+    {
+      icon: <Activity className="size-6" aria-hidden />,
+      title: "Live Market Feeds",
+      description: "Direct connections to major exchanges with Level 2 order book data, tick-by-tick prices, and real-time market depth."
     }
   ]
 

@@ -3,7 +3,7 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import CollaborationAnimationAutoPlay from "@/components/ui/collaboration-animation"
 import { TeamMemberCard, type TeamMemberData } from "@/components/ui/team-member-card"
-import { Zap, TrendingUp, Database } from "lucide-react"
+import { Zap, Users, GitBranch, Shield } from "lucide-react"
 
 
 const teamMembers: TeamMemberData[] = [
@@ -15,19 +15,19 @@ const teamMembers: TeamMemberData[] = [
 export default function TeamCollaborationPage() {
   const features = [
     {
-      icon: <TrendingUp className="size-6" aria-hidden />,
-      title: "Historical Tick Data",
-      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
+      icon: <Users className="size-6" aria-hidden />,
+      title: "Real-Time Collaboration",
+      description: "Work simultaneously with your team on strategies, research, and code with live updates and presence indicators."
     },
     {
-      icon: <Database className="size-6" aria-hidden />,
-      title: "Alternative Datasets",
-      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
+      icon: <GitBranch className="size-6" aria-hidden />,
+      title: "Version Control",
+      description: "Track changes, review modifications, and manage strategy versions with integrated Git-like workflow for trading algorithms."
     },
     {
-      icon: <Zap className="size-6" aria-hidden />,
-      title: "Real-Time Feeds",
-      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+      icon: <Shield className="size-6" aria-hidden />,
+      title: "Role-Based Permissions",
+      description: "Control access to strategies, data, and deployments with granular permissions for owners, moderators, and team members."
     }
   ]
 
