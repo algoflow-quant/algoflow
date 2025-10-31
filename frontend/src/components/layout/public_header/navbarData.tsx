@@ -53,7 +53,7 @@ export const productSections: NavSection[] = [
   {
     items: [
       {
-        href: '/dashboard',
+        href: '/quantitativedata',
         icon: <VscVscode />,
         iconSize: { width: '20px', height: '20px' },
         title: 'Quantitative IDE',
@@ -67,19 +67,19 @@ export const productSections: NavSection[] = [
         description: 'Test strategies on history',
       },
       {
-        href: '/backtesting',
+        href: '/research',
         icon: <GrTest />,
         title: 'Research',
         description: 'Jupyter notebook environment',
       },
       {
-        href: '/backtesting',
+        href: '/algoflowdata',
         icon: <FaDatabase />,
         title: 'Algoflow Data',
         description: 'Market and alternative data',
       },
       {
-        href: '/backtesting',
+        href: '/teamcollaboration',
         icon: <RiTeamFill />,
         title: 'Team Collaboration',
         description: 'Code together in real-time',
