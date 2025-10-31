@@ -15,7 +15,7 @@ const users: User[] = [
   { id: 2, name: 'Sarah', color: 'bg-purple-500', avatar: 'S' },
   { id: 3, name: 'Mike', color: 'bg-emerald-500', avatar: 'M' },
 ]
-
+// Autoplay option for the component
 export default function CollaborationAnimationAutoPlay() {
   const [showCode, setShowCode] = useState(false)
   const [activeCursors, setActiveCursors] = useState<{line: number, user: string, color: string, text: string}[]>([])
@@ -150,7 +150,7 @@ export default function CollaborationAnimationAutoPlay() {
   return (
     <div className="absolute inset-0 flex flex-col p-4 pb-24">
       {!showCode ? (
-        // File list view
+        // File list view 
         <div className="flex-1 flex flex-col gap-3">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
