@@ -3,14 +3,34 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import { AnimatedLineChart } from "@/components/ui/line-chart"
 import { GrTest } from "react-icons/gr"
+import { TrendingUp, Database, Zap } from "lucide-react"
 
 export default function ResearchPage() {
+  const features = [
+    {
+      icon: <TrendingUp className="size-6" aria-hidden />,
+      title: "Historical Tick Data",
+      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
+    },
+    {
+      icon: <Database className="size-6" aria-hidden />,
+      title: "Alternative Datasets",
+      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
+    },
+    {
+      icon: <Zap className="size-6" aria-hidden />,
+      title: "Real-Time Feeds",
+      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+    }
+  ]
+
   return (
     <ProductLayout
       icon={<GrTest size={32} />}
       iconLabel="Research"
       title={<>Discover Alpha with <br/>Advanced Analytics</>}
       description={<>Leverage cutting-edge research tools and AI-powered <br/> insights to discover trading opportunities.<br/><br/> Analyze market patterns, test hypotheses, and develop <br/>strategies backed by data science.</>}
+      features={features}
     >
       <div className="relative w-full h-[500px]">
         {/*Green chart*/}

@@ -3,7 +3,7 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import CollaborationAnimationAutoPlay from "@/components/ui/collaboration-animation"
 import { TeamMemberCard, type TeamMemberData } from "@/components/ui/team-member-card"
-import { Zap } from "lucide-react"
+import { Zap, TrendingUp, Database } from "lucide-react"
 
 
 const teamMembers: TeamMemberData[] = [
@@ -13,12 +13,31 @@ const teamMembers: TeamMemberData[] = [
 ]
 
 export default function TeamCollaborationPage() {
+  const features = [
+    {
+      icon: <TrendingUp className="size-6" aria-hidden />,
+      title: "Historical Tick Data",
+      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
+    },
+    {
+      icon: <Database className="size-6" aria-hidden />,
+      title: "Alternative Datasets",
+      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
+    },
+    {
+      icon: <Zap className="size-6" aria-hidden />,
+      title: "Real-Time Feeds",
+      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+    }
+  ]
+
   return (
     <ProductLayout
       icon={<Zap size={32} />}
       iconLabel="Team Collaboration"
       title={<>Build Better Strategies <br/>Together</>}
       description={<>Work together with your team to develop, test, and <br/>deploy trading strategies. <br/><br/>Share research, review code, and manage permissions <br/>all in one collaborative platform.</>}
+      features={features}
     >
       <div className="relative w-full h-[600px]">
         {/*Main terminal*/}

@@ -3,7 +3,7 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import { AnimatedLineChart } from "@/components/ui/line-chart"
 import { DataCard, type DataFeedData } from "@/components/ui/data-card"
-import { Database } from "lucide-react"
+import { Database, TrendingUp, Zap } from "lucide-react"
 
 // Data feeds
 const dataFeeds: DataFeedData[] = [
@@ -13,12 +13,31 @@ const dataFeeds: DataFeedData[] = [
 ]
 
 export default function AlgoFlowDataPage() {
+  const features = [
+    {
+      icon: <TrendingUp className="size-6" aria-hidden />,
+      title: "Historical Tick Data",
+      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
+    },
+    {
+      icon: <Database className="size-6" aria-hidden />,
+      title: "Alternative Datasets",
+      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
+    },
+    {
+      icon: <Zap className="size-6" aria-hidden />,
+      title: "Real-Time Feeds",
+      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+    }
+  ]
+
   return (
     <ProductLayout
       icon={<Database size={32} />}
       iconLabel="AlgoFlow Data"
       title={<>AlgoFlow Data Built <br/>for Scale</>}
       description={<>Our proprietary data infrastructure delivers <br/>institutional-quality market data with unmatched <br/>reliability and performance. <br/><br/>Purpose-built for quantitative trading at any scale.</>}
+      features={features}
     >
       <div className="relative w-full h-[500px]">
         {/*Green chart*/}

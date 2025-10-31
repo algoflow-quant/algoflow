@@ -1,14 +1,33 @@
 import ProductLayout from "@/components/layout/ProductLayout"
 import { Terminal, TypingAnimation, AnimatedSpan } from "@/components/ui/terminal"
-import { LineChart } from "lucide-react"
+import { LineChart, TrendingUp, Database, Zap } from "lucide-react"
 
 export default function BacktestingPage() {
+  const features = [
+    {
+      icon: <TrendingUp className="size-6" aria-hidden />,
+      title: "Historical Tick Data",
+      description: "Access years of high-frequency tick-level data across thousands of instruments for precise backtesting."
+    },
+    {
+      icon: <Database className="size-6" aria-hidden />,
+      title: "Alternative Datasets",
+      description: "Leverage sentiment data, satellite imagery, and other alternative data sources to gain unique market insights."
+    },
+    {
+      icon: <Zap className="size-6" aria-hidden />,
+      title: "Real-Time Feeds",
+      description: "Institutional-grade real-time market data with ultra-low latency for live trading and analysis."
+    }
+  ]
+
   return (
     <ProductLayout
       icon={<LineChart size={32} />}
       iconLabel="Backtesting"
       title={<>Test Your Strategies Before<br/>Risking Real Capital</>}
       description={<>Run comprehensive backtests on historical data with <br/> institutional-grade accuracy.<br/><br/>Simulate your trading strategies across years of market <br/> data to validate performance and optimize parameters <br/>before going live.</>}
+      features={features}
     >
       <div className="relative w-full h-[500px]">
         {/*Most back terminal*/}

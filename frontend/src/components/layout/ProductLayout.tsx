@@ -143,7 +143,7 @@ export default function ProductLayout({
           <div className="@container mx-auto max-w-7xl px-6 relative z-10">
             <div className="@min-4xl:max-w-full @min-4xl:grid-cols-3 mx-auto mt-8 grid max-w-sm gap-12 *:text-center md:mt-16 md:gap-16">
               {features.map((feature, index) => (
-                <Card key={index} className={`group border-0 shadow-none bg-transparent ${index === 0 ? '-ml-4' : ''} ${index === 2 ? '-mr-4' : ''}`}>
+                <Card key={index} className={`group border-0 shadow-none bg-transparent opacity-0 animate-fade-in ${index === 0 ? '-ml-4' : ''} ${index === 2 ? '-mr-4' : ''}`} style={{ animationDelay: `${0.2 + index * 0.15}s`, animationFillMode: 'forwards' }}>
                   <CardHeader className="pb-3">
                     <CardDecorator>
                       {feature.icon}
