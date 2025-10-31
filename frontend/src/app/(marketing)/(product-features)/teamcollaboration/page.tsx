@@ -1,5 +1,16 @@
+'use client'
+
 import ProductLayout from "@/components/layout/ProductLayout"
+import CollaborationAnimationAutoPlay from "@/components/ui/collaboration-animation"
+import { TeamMemberCard, type TeamMemberData } from "@/components/ui/team-member-card"
 import { Zap } from "lucide-react"
+
+// Team members matching the collaboration animation
+const teamMembers: TeamMemberData[] = [
+  { username: 'alex', fullName: 'Alex', role: 'owner', isOnline: true, avatarColor: 'bg-blue-500' },
+  { username: 'sarah', fullName: 'Sarah', role: 'moderator', isOnline: true, avatarColor: 'bg-purple-500' },
+  { username: 'mike', fullName: 'Mike', role: 'member', isOnline: true, avatarColor: 'bg-emerald-500' },
+]
 
 export default function TeamCollaborationPage() {
   return (
@@ -8,6 +19,28 @@ export default function TeamCollaborationPage() {
       iconLabel="Team Collaboration"
       title={<>Build Better Strategies <br/>Together</>}
       description={<>Work together with your team to develop, test, and <br/>deploy trading strategies. <br/><br/>Share research, review code, and manage permissions <br/>all in one collaborative platform.</>}
-    />
+    >
+      <div className="relative w-full h-[600px]">
+        {/* Center - Large collaboration animation terminal */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[550px] z-20 bg-gradient-to-br from-gray-900 to-gray-950 rounded-lg border border-white/10">
+          <CollaborationAnimationAutoPlay />
+        </div>
+
+        {/* Top left - Alex (Owner) - Overlapping terminal */}
+        <div className="absolute top-[-8px] left-0 w-[58%] z-30">
+          <TeamMemberCard member={teamMembers[0]} animated delay={300} />
+        </div>
+
+        {/* Middle right - Sarah (Moderator) - Overlapping terminal */}
+        <div className="absolute bottom-24 right-[-15%] w-[58%] z-30">
+          <TeamMemberCard member={teamMembers[1]} animated delay={500} />
+        </div>
+
+        {/* Bottom left - Mike (Member) - Overlapping terminal */}
+        <div className="absolute bottom-4 left-[-8%] w-[58%] z-30">
+          <TeamMemberCard member={teamMembers[2]} animated delay={700} />
+        </div>
+      </div>
+    </ProductLayout>
   )
 }

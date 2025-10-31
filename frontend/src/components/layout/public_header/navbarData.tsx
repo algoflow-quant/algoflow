@@ -53,7 +53,7 @@ export const productSections: NavSection[] = [
   {
     items: [
       {
-        href: '/dashboard',
+        href: '/quantitativedata',
         icon: <VscVscode />,
         iconSize: { width: '20px', height: '20px' },
         title: 'Quantitative IDE',
